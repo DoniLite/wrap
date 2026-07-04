@@ -1,0 +1,27 @@
+{
+  "name": "@donilite/create-wrap",
+  "version": "0.1.0",
+  "description": "Scaffold a @donilite/wrap backend project (Hono + Drizzle + Bun, vertical-slice, decorator-driven)",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "create-wrap": "./src/index.ts"
+  },
+  "files": [
+    "src",
+    "template"
+  ],
+  "keywords": [
+    "bun",
+    "hono",
+    "drizzle",
+    "backend",
+    "scaffold",
+    "typescript",
+    "api"
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  }
+}

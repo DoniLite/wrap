@@ -1,0 +1,47 @@
+{
+  "name": "wrap-template",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "bun run migrate:db && NODE_ENV=production bun run src/index.ts",
+    "fmt": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "lint": "bunx eslint .",
+    "lint:fix": "bunx eslint . --ext .js,.ts --fix",
+    "purge:db": "docker compose down -v",
+    "wake:db": "docker compose up -d",
+    "down:db": "docker compose down",
+    "push:db": "bunx drizzle-kit push",
+    "migrate:db": "bunx drizzle-kit migrate",
+    "generate:migrations": "bunx drizzle-kit generate",
+    "init:env": "cp ./.env.example ./.env",
+    "init:all": "bun init:env && bun install && bun wake:db && bun migrate:db",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
+    "@eslint/js": "^10",
+    "@types/bun": "latest",
+    "@types/pg": "^8.16.0",
+    "drizzle-kit": "^0.31.0",
+    "eslint": "^10",
+    "globals": "^17.0.0",
+    "jiti": "^2.7.0",
+    "prettier": "^3.9.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1"
+  },
+  "dependencies": {
+    "@donilite/wrap": "workspace:*",
+    "dotenv": "^17.2.0",
+    "dotenv-expand": "^13",
+    "drizzle-orm": "^0.45.0",
+    "drizzle-zod": "^0.8.3",
+    "hono": "^4.12.27",
+    "pg": "^8.16.0",
+    "reflect-metadata": "^0.2.2",
+    "zod": "^4.4.3"
+  }
+}
