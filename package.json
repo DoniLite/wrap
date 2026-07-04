@@ -1,25 +1,17 @@
 {
-  "name": "create-lite-backend",
-  "version": "1.0.0",
-  "description": "A modern Hono + Drizzle ORM + Bun backend template with decorator-driven architecture",
+  "name": "wrap-monorepo",
+  "private": true,
   "type": "module",
-  "bin": {
-    "create-lite-backend": "./cli.ts"
+  "workspaces": [
+    "packages/wrap",
+    "packages/create-wrap",
+    "packages/create-wrap/template"
+  ],
+  "scripts": {
+    "build": "bun run --cwd packages/wrap build",
+    "typecheck": "bun run --cwd packages/wrap typecheck && bun run --cwd packages/create-wrap/template typecheck",
+    "lint": "bun run --cwd packages/wrap lint && bun run --cwd packages/create-wrap/template lint"
   },
-  "files": [
-    "cli.ts",
-    "template"
-  ],
-  "keywords": [
-    "bun",
-    "hono",
-    "drizzle",
-    "backend",
-    "template",
-    "typescript",
-    "api"
-  ],
-  "author": "",
   "license": "MIT",
   "repository": {
     "type": "git",

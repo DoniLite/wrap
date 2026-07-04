@@ -1,0 +1,78 @@
+{
+  "name": "@donilite/wrap",
+  "version": "0.1.0",
+  "description": "OOP backend framework on Hono + Drizzle \u2014 Bun-first, vertical-slice, decorator-driven",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "bun",
+    "hono",
+    "drizzle",
+    "framework",
+    "backend",
+    "typescript",
+    "decorators",
+    "vertical-slice"
+  ],
+  "peerDependencies": {
+    "drizzle-orm": "^0.45.0",
+    "drizzle-zod": "^0.8.3",
+    "hono": "^4.12.0",
+    "pg": "^8.16.0",
+    "zod": "^4.0.0",
+    "@electric-sql/pglite": ">=0.3.0",
+    "drizzle-kit": "^0.31.0"
+  },
+  "dependencies": {
+    "@hono/swagger-ui": "^0.6.1",
+    "date-fns": "^4.1.0",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
+    "@eslint/js": "^10",
+    "@types/bun": "latest",
+    "@types/pg": "^8.16.0",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.0",
+    "drizzle-zod": "^0.8.3",
+    "eslint": "^10",
+    "globals": "^17.0.0",
+    "hono": "^4.12.27",
+    "jiti": "^2.7.0",
+    "pg": "^8.16.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1",
+    "zod": "^4.4.3"
+  },
+  "peerDependenciesMeta": {
+    "@electric-sql/pglite": {
+      "optional": true
+    },
+    "drizzle-kit": {
+      "optional": true
+    }
+  }
+}
