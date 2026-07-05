@@ -79,5 +79,18 @@
     "drizzle-kit": {
       "optional": true
     }
+  },
+  "author": "DoniLite",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DoniLite/wrap.git",
+    "directory": "packages/wrap"
+  },
+  "homepage": "https://github.com/DoniLite/wrap#readme",
+  "bugs": {
+    "url": "https://github.com/DoniLite/wrap/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

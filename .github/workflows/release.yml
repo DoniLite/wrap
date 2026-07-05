@@ -1,0 +1,65 @@
+name: Release
+
+# Tag-driven releases: `git tag v0.1.0 && git push origin v0.1.0`
+# publishes @donilite/wrap and @donilite/create-wrap at that version.
+#
+# Publishing uses npm Trusted Publishing (OIDC) — no NPM_TOKEN secret.
+# One-time setup on npmjs.com for EACH package:
+#   Package → Settings → Trusted publishers → GitHub Actions
+#   repository: DoniLite/wrap — workflow: release.yml
+# (A brand-new package needs one first manual `npm publish` before the
+# trusted publisher can be configured.)
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm Trusted Publishing (OIDC + provenance)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Build @donilite/wrap
+        run: bun run build
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Tests
+        working-directory: packages/create-wrap/template
+        run: bun test
+
+      - name: Apply the tag version to both packages
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Releasing version $VERSION"
+          (cd packages/wrap && npm version "$VERSION" --no-git-tag-version)
+          (cd packages/create-wrap && npm version "$VERSION" --no-git-tag-version)
+
+      - name: Publish @donilite/wrap
+        working-directory: packages/wrap
+        run: npm publish
+
+      - name: Publish @donilite/create-wrap
+        working-directory: packages/create-wrap
+        run: npm publish

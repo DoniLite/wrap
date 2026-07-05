@@ -12,8 +12,16 @@ import { join, basename, dirname } from "path";
 
 const TEMPLATE_DIR = join(import.meta.dir, "..", "template");
 
-/** Version range of @donilite/wrap injected into scaffolded projects. */
-const WRAP_VERSION = "^0.1.0";
+/**
+ * Version range of @donilite/wrap injected into scaffolded projects —
+ * both packages are released together from the same tag, so the CLI's
+ * own version is the framework version.
+ */
+const WRAP_VERSION = `^${
+  JSON.parse(
+    readFileSync(join(import.meta.dir, "..", "package.json"), "utf-8"),
+  ).version
+}`;
 
 /** Entries never copied into a scaffolded project. */
 const COPY_IGNORE = new Set([

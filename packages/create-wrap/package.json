@@ -22,6 +22,15 @@
   ],
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/DoniLite/wrap.git",
+    "directory": "packages/create-wrap"
+  },
+  "author": "DoniLite",
+  "homepage": "https://github.com/DoniLite/wrap#readme",
+  "bugs": {
+    "url": "https://github.com/DoniLite/wrap/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
