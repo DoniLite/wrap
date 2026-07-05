@@ -54,7 +54,7 @@ describe("ExampleController", () => {
     expect(res.body.items[0].items[0].label).toBe("child");
   });
 
-  it("DELETE /:id then GET /:id returns 404", async () => {
+  it("DELETE /:id then GET /:id returns 400", async () => {
     const created = await requestJson(app, "POST", "/", { name: "Temp" });
 
     const del = await requestJson(app, "DELETE", `/${created.body.id}`);
@@ -62,6 +62,7 @@ describe("ExampleController", () => {
     expect(del.body.deleted).toBe(true);
 
     const get = await requestJson(app, "GET", `/${created.body.id}`);
-    expect(get.status).toBe(404);
+    expect(get.status).toBe(400);
+    expect(get.body.message).toBe("No operation performed");
   });
 });
