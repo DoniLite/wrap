@@ -15,6 +15,7 @@ import { getTableName, is, sql } from "drizzle-orm";
 import { PgTable } from "drizzle-orm/pg-core";
 import type { Context, Hono } from "hono";
 import { resetDatabase, setDatabase, type WrapDatabase } from "../database";
+import { getCacheStore } from "../middleware/cache.middleware";
 import type { RegisteredSchema } from "../registry";
 
 export interface TestDatabaseOptions {
@@ -90,9 +91,12 @@ export async function createTestDatabase(
           ),
         );
       }
+      // Repository-level cache must not survive a truncate
+      await getCacheStore().clear();
     },
     async destroy() {
       await close();
+      await getCacheStore().clear();
       resetDatabase();
     },
   };

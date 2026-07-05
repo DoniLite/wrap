@@ -11,6 +11,7 @@ import {
   ResponseHelper,
   setupSwagger,
 } from "@donilite/wrap";
+import { createRealtime } from "@donilite/wrap/realtime";
 import api from "@/index.controller";
 import { auth } from "@/middleware/auth";
 import { appConfig } from "@/config/app.config";
@@ -63,8 +64,19 @@ app.use("/admin/*", auth.authMiddleware);
 
 app.route("/api", api);
 
-export default {
+// Realtime: native Bun WebSocket topics + optional Redis relay for
+// multi-instance fan-out. Entity writes are auto-published on
+// `entity:<table>` channels.
+const realtime = createRealtime({ redisUrl: process.env.REDIS_URL });
+app.get("/realtime", realtime.upgrade);
+realtime.bindEntityEvents();
+
+const server = Bun.serve({
   port: appConfig.port,
   hostname: appConfig.host,
   fetch: app.fetch,
-};
+  websocket: realtime.websocket,
+});
+realtime.attach(server);
+
+console.log(`⚡ ready on http://localhost:${server.port}`);

@@ -21,6 +21,12 @@ import type {
   PgUpdateSetSource,
 } from "drizzle-orm/pg-core";
 import { getDatabase, type WrapDatabase } from "./database";
+import { currentTransaction } from "./transaction";
+import { emitEntityEvent } from "./events";
+import {
+  entityCachePrefix,
+  getCacheStore,
+} from "./middleware/cache.middleware";
 import type {
   BaseTable,
   FindOptions,
@@ -132,12 +138,14 @@ export abstract class BaseRepository<
 
   /**
    * Lazy database access — resolved on first use so repositories can be
-   * declared before `initializeDatabase()` runs at bootstrap.
+   * declared before `initializeDatabase()` runs at bootstrap. When a
+   * `withTransaction` scope is active, the ambient transaction is used
+   * transparently.
    * (Return type MUST stay explicit: without it tsc freezes the inferred
    * registry conditional into the emitted d.ts.)
    */
   protected get db(): WrapDatabase {
-    return getDatabase();
+    return currentTransaction() ?? getDatabase();
   }
 
   /**
@@ -161,44 +169,100 @@ export abstract class BaseRepository<
    */
   protected searchableFields?: Array<keyof Tb["_"]["columns"] & string>;
 
+  /**
+   * Opt-in entity-scope caching: set a TTL (seconds) and every read of
+   * this repository goes through the configured cache store; any write
+   * on the entity invalidates the whole scope automatically (entity
+   * events). Reads inside a transaction bypass the cache.
+   * `protected override cacheTtl = 60;`
+   */
+  protected cacheTtl?: number;
+
+  private async cached<T>(
+    method: string,
+    args: unknown[],
+    fetch: () => Promise<T>,
+  ): Promise<T> {
+    const ttl = this.cacheTtl;
+    if (!ttl || currentTransaction()) return fetch();
+
+    const key = `${entityCachePrefix(getTableName(this.table))}${method}:${JSON.stringify(args)}`;
+    const store = getCacheStore();
+
+    try {
+      const hit = await store.get(key);
+      if (hit !== null && hit !== undefined) return hit as T;
+    } catch {
+      // cache is best-effort
+    }
+
+    const result = await fetch();
+    if (result !== null && result !== undefined) {
+      try {
+        await store.set(key, result, ttl);
+      } catch {
+        // cache is best-effort
+      }
+    }
+    return result;
+  }
+
   async create(dto: TCreate): Promise<InferEntity<Tb>> {
     this.logger.debug("Creating entity in DB", {
       table: getTableName(this.table),
     });
     const [result] = await this.db.insert(this.table).values(dto).returning();
-    return result as InferEntity<Tb>;
+    const entity = result as InferEntity<Tb>;
+    emitEntityEvent({
+      type: "created",
+      table: getTableName(this.table),
+      data: entity,
+    });
+    return entity;
   }
 
   async findById<W extends WithConfig<Tb> | undefined = undefined>(
     id: string | number,
     options?: FindOptions<Tb, W>,
   ): Promise<FindResult<Tb, W> | null> {
-    const where = this.combine([
-      eq(this.table.id, id),
-      this.softDeleteFilter(options?.includeDeleted),
-    ]);
+    return this.cached("findById", [id, options], async () => {
+      const where = this.combine([
+        eq(this.table.id, id),
+        this.softDeleteFilter(options?.includeDeleted),
+      ]);
 
-    const withConfig = this.resolveWith(options?.with);
-    if (withConfig) {
-      const result = await this.requireRelationalQuery().findFirst({
-        where,
-        with: withConfig,
-      });
+      const withConfig = this.resolveWith(options?.with);
+      if (withConfig) {
+        const result = await this.requireRelationalQuery().findFirst({
+          where,
+          with: withConfig,
+        });
+        return (result ?? null) as FindResult<Tb, W> | null;
+      }
+
+      const [result] = await this.db
+        .select()
+        .from(this.table as PgTable)
+        .where(where)
+        .limit(1);
       return (result ?? null) as FindResult<Tb, W> | null;
-    }
-
-    const [result] = await this.db
-      .select()
-      .from(this.table as PgTable)
-      .where(where)
-      .limit(1);
-    return (result ?? null) as FindResult<Tb, W> | null;
+    });
   }
 
   async findPaginated<W extends WithConfig<Tb> | undefined = undefined>(
     paginationQuery: PaginationQuery,
     options?: FindOptions<Tb, W>,
   ): Promise<PaginatedResponse<FindResult<Tb, W>>> {
+    return this.cached("findPaginated", [paginationQuery, options], () =>
+      this.fetchPaginated(paginationQuery, options),
+    ) as Promise<PaginatedResponse<FindResult<Tb, W>>>;
+  }
+
+  private async fetchPaginated(
+    paginationQuery: PaginationQuery,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    options?: FindOptions<Tb, any>,
+  ): Promise<PaginatedResponse<unknown>> {
     const {
       page = 1,
       pageSize = 10,
@@ -279,7 +343,7 @@ export abstract class BaseRepository<
     }
 
     return {
-      items: items as FindResult<Tb, W>[],
+      items,
       itemCount,
       page: validPage,
       pageSize: validPageSize,
@@ -291,49 +355,53 @@ export abstract class BaseRepository<
     filters?: Partial<InferEntity<Tb>>,
     options?: FindOptions<Tb, W>,
   ): Promise<FindResult<Tb, W>[]> {
-    const conditions = this.buildEqConditions(filters);
-    const softDelete = this.softDeleteFilter(options?.includeDeleted);
-    if (softDelete) conditions.push(softDelete);
-    const where = this.combine(conditions);
+    return this.cached("findAll", [filters, options], async () => {
+      const conditions = this.buildEqConditions(filters);
+      const softDelete = this.softDeleteFilter(options?.includeDeleted);
+      if (softDelete) conditions.push(softDelete);
+      const where = this.combine(conditions);
 
-    const withConfig = this.resolveWith(options?.with);
-    if (withConfig) {
-      return (await this.requireRelationalQuery().findMany({
-        where,
-        with: withConfig,
-      })) as FindResult<Tb, W>[];
-    }
+      const withConfig = this.resolveWith(options?.with);
+      if (withConfig) {
+        return (await this.requireRelationalQuery().findMany({
+          where,
+          with: withConfig,
+        })) as FindResult<Tb, W>[];
+      }
 
-    return (await this.db
-      .select()
-      .from(this.table as PgTable)
-      .where(where)) as FindResult<Tb, W>[];
+      return (await this.db
+        .select()
+        .from(this.table as PgTable)
+        .where(where)) as FindResult<Tb, W>[];
+    });
   }
 
   async findOne<W extends WithConfig<Tb> | undefined = undefined>(
     filters?: Partial<InferEntity<Tb>>,
     options?: FindOptions<Tb, W>,
   ): Promise<FindResult<Tb, W> | null> {
-    const conditions = this.buildEqConditions(filters);
-    const softDelete = this.softDeleteFilter(options?.includeDeleted);
-    if (softDelete) conditions.push(softDelete);
-    const where = this.combine(conditions);
+    return this.cached("findOne", [filters, options], async () => {
+      const conditions = this.buildEqConditions(filters);
+      const softDelete = this.softDeleteFilter(options?.includeDeleted);
+      if (softDelete) conditions.push(softDelete);
+      const where = this.combine(conditions);
 
-    const withConfig = this.resolveWith(options?.with);
-    if (withConfig) {
-      const result = await this.requireRelationalQuery().findFirst({
-        where,
-        with: withConfig,
-      });
+      const withConfig = this.resolveWith(options?.with);
+      if (withConfig) {
+        const result = await this.requireRelationalQuery().findFirst({
+          where,
+          with: withConfig,
+        });
+        return (result ?? null) as FindResult<Tb, W> | null;
+      }
+
+      const [result] = await this.db
+        .select()
+        .from(this.table as PgTable)
+        .where(where)
+        .limit(1);
       return (result ?? null) as FindResult<Tb, W> | null;
-    }
-
-    const [result] = await this.db
-      .select()
-      .from(this.table as PgTable)
-      .where(where)
-      .limit(1);
-    return (result ?? null) as FindResult<Tb, W> | null;
+    });
   }
 
   async update(
@@ -351,6 +419,11 @@ export abstract class BaseRepository<
       .returning()) as InferEntity<Tb>[];
 
     if (!result || result.length === 0) return null;
+    emitEntityEvent({
+      type: "updated",
+      table: getTableName(this.table),
+      data: result,
+    });
     return result;
   }
 
@@ -360,7 +433,15 @@ export abstract class BaseRepository<
         .delete(this.table)
         .where(eq(this.table.id, id));
       const affected = extractAffectedRows(result);
-      return affected === undefined ? true : affected > 0;
+      const deleted = affected === undefined ? true : affected > 0;
+      if (deleted) {
+        emitEntityEvent({
+          type: "deleted",
+          table: getTableName(this.table),
+          data: { ids: [id] },
+        });
+      }
+      return deleted;
     } catch (error) {
       this.logger.error(
         `Failed to delete entity ${id} from ${getTableName(this.table)}`,
@@ -389,7 +470,15 @@ export abstract class BaseRepository<
       .delete(this.table)
       .where(inArray(this.table.id, ids));
 
-    return extractAffectedRows(result) ?? 0;
+    const affected = extractAffectedRows(result) ?? 0;
+    if (affected > 0) {
+      emitEntityEvent({
+        type: "deleted",
+        table: getTableName(this.table),
+        data: { ids },
+      });
+    }
+    return affected;
   }
 
   async findBy<K extends keyof InferEntity<Tb> & string>(

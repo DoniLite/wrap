@@ -23,4 +23,8 @@ export class ExampleRepository extends BaseRepository<
     "name",
     "description",
   ];
+
+  // Entity-scope cache: reads go through the configured store (memory by
+  // default, Redis via configureCache); any write invalidates the scope.
+  protected override cacheTtl = 30;
 }

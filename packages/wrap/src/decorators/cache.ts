@@ -2,7 +2,7 @@
 import "reflect-metadata";
 import type { CacheOptions } from "./interfaces";
 import { CACHE_METADATA } from "./constants";
-import { defaultCacheStore } from "../middleware/cache.middleware";
+import { getCacheStore } from "../middleware/cache.middleware";
 
 export function getCacheMetadata(
   target: any,
@@ -35,7 +35,7 @@ export function Cache(options: CacheOptions = {}) {
 
       // Try to get from cache
       try {
-        const cached = await defaultCacheStore.get(key);
+        const cached = await getCacheStore().get(key);
         if (cached !== null && cached !== undefined) {
           // console.debug(`Cache hit for ${key}`);
           return cached;
@@ -50,7 +50,7 @@ export function Cache(options: CacheOptions = {}) {
       // Cache result if not undefined/null
       if (result !== undefined && result !== null) {
         try {
-          await defaultCacheStore.set(key, result, ttl);
+          await getCacheStore().set(key, result, ttl);
         } catch (e) {
           console.warn(`Cache set error for ${key}:`, e);
         }

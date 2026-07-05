@@ -17,6 +17,12 @@ export * from "./entity";
 // Database lifecycle
 export * from "./database";
 
+// Transactions (implicit AsyncLocalStorage propagation)
+export * from "./transaction";
+
+// Entity lifecycle events
+export * from "./events";
+
 // Base classes
 export * from "./base.repository";
 export * from "./base.service";
@@ -34,6 +40,7 @@ export * from "./decorators";
 
 // Middlewares
 export * from "./middleware/cache.middleware";
+export * from "./cache/redis-cache.store";
 export * from "./middleware/rate-limit.middleware";
 export * from "./middleware/error-handler.middleware";
 export * from "./middleware/request-logger.middleware";

@@ -5,7 +5,11 @@
  */
 import { config } from "dotenv";
 import { expand } from "dotenv-expand";
-import { initializeDatabase } from "@donilite/wrap";
+import {
+  configureCache,
+  initializeDatabase,
+  RedisCacheStore,
+} from "@donilite/wrap";
 import * as schemas from "@/db";
 
 expand(config());
@@ -19,3 +23,11 @@ initializeDatabase({
   schema: schemas,
   logger: process.env.NODE_ENV !== "production",
 });
+
+// Cache backend: Redis when REDIS_URL is set, in-memory otherwise.
+// Repositories opt in with `cacheTtl`; invalidation is automatic.
+if (process.env.REDIS_URL) {
+  configureCache({
+    store: new RedisCacheStore({ url: process.env.REDIS_URL }),
+  });
+}

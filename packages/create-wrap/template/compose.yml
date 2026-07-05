@@ -12,5 +12,12 @@ services:
     ports:
       - "${DB_PORT}:5432"
 
+  {{APP_NAME_SNAKE}}_redis:
+    image: redis:7-alpine
+    container_name: {{APP_NAME_SNAKE}}_redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
 volumes:
   {{APP_NAME_SNAKE}}_db_data:
