@@ -17,7 +17,7 @@ export class ExampleRepository extends BaseRepository<
 
   // Relations loaded when a request asks `populateChildren=true` —
   // any combination of many (arrays) and one (objects) relations
-  protected override defaultWith = { items: true, category: true } as const;
+  protected override defaultWith = { items: true, } as const;
 
   protected override searchableFields: (keyof ExampleTableType)[] = [
     "name",

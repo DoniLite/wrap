@@ -49,8 +49,8 @@ export class ExampleController extends BaseController<ExampleService> {
     description: "Success",
     schema: PaginatedResponseDTO(ExamplePopulated),
   })
-  @ApiResponse(500, {
-    description: "Internal Server Error",
+  @ApiResponse(400, {
+    description: "Bad Request",
     schema: BaseErrorDTO,
   })
   @Serialize(PaginatedResponseDTO(ExamplePopulated))
@@ -72,8 +72,8 @@ export class ExampleController extends BaseController<ExampleService> {
     description: "Success",
     schema: ExampleBase,
   })
-  @ApiResponse(404, {
-    description: "Not Found",
+  @ApiResponse(400, {
+    description: "Bad Request",
     schema: BaseErrorDTO,
   })
   @Serialize(ExampleBase)
@@ -83,7 +83,7 @@ export class ExampleController extends BaseController<ExampleService> {
       const id = c.req.param("id")!;
       const example = await this.service.findById(id);
       if (!example) {
-        return c.json({ success: false, message: "Example not found" }, 404);
+        return c.json({ success: false, message: "No operation performed" }, 400);
       }
       return c.json(example);
     } catch (e) {
@@ -107,7 +107,7 @@ export class ExampleController extends BaseController<ExampleService> {
   @Serialize(ExampleBase)
   async createExample(c: Context) {
     try {
-      const body = await c.req.json();
+      const body = await c.req.json<CreateExampleDTO>();
       const dto = CreateExampleDTO.from(body);
       const example = await this.service.create(dto, c);
       return c.json(example, 201);
@@ -125,15 +125,15 @@ export class ExampleController extends BaseController<ExampleService> {
     description: "Success",
     schema: ExampleBase,
   })
-  @ApiResponse(404, {
-    description: "Not Found",
+  @ApiResponse(400, {
+    description: "Bad Request",
     schema: BaseErrorDTO,
   })
   @Serialize(ExampleBase)
   async updateExample(c: Context) {
     try {
       const id = c.req.param("id")!;
-      const body = await c.req.json();
+      const body = await c.req.json<typeof UpdateExampleDTO>();
       const dto = UpdateExampleDTO.from(body);
       const example = await this.service.update(id, dto, c);
       return c.json(example);
@@ -150,8 +150,8 @@ export class ExampleController extends BaseController<ExampleService> {
     description: "Success",
     schema: BaseDeletedSuccessDTO,
   })
-  @ApiResponse(404, {
-    description: "Not Found",
+  @ApiResponse(400, {
+    description: "Bad Request",
     schema: BaseErrorDTO,
   })
   async deleteExample(c: Context) {
@@ -160,7 +160,7 @@ export class ExampleController extends BaseController<ExampleService> {
       const result = await this.service.delete(id);
 
       if (!result) {
-        return c.json({ success: false, message: "Example not found" }, 404);
+        return c.json({ success: false, message: "No operation performed" }, 400);
       }
 
       return c.json({ deleted: true, id });

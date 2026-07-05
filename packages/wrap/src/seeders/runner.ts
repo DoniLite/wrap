@@ -1,6 +1,11 @@
+
+export interface Seeder {
+  run(): Promise<void>;
+}
+
+
 export class SeederRunner<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  C extends new () => any,
+  C extends new () => Seeder,
 > {
   constructor(protected seeders: C[]) {}
 

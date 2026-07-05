@@ -48,11 +48,11 @@ if (appConfig.swagger.enabled) {
     {
       title: appConfig.swagger.title,
       version: appConfig.swagger.version,
-      description: "API documentation with enhanced features",
+      description: 'API documentation with enhanced features',
       servers: [
         {
-          url: `http://${appConfig.host === "0.0.0.0" ? "localhost" : appConfig.host}:${appConfig.port}`,
-          description: "Development",
+          url: `http://${appConfig.host === '0.0.0.0' ? 'localhost' : appConfig.host}:${appConfig.port}`,
+          description: (process.env.NODE_ENV || 'development').toUpperCase(),
         },
       ],
     },
