@@ -10,6 +10,12 @@ export default tseslint.config(
       globals: {
         ...globals.node,
       },
+      parserOptions: {
+        // Pins the tsconfig root for this package explicitly — see the
+        // comment in packages/wrap/eslint.config.ts for why this is
+        // required in this monorepo.
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
 );

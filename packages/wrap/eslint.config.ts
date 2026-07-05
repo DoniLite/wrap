@@ -11,6 +11,15 @@ export default tseslint.config(
       globals: {
         ...globals.node,
       },
+      parserOptions: {
+        // Pins the tsconfig root for this package explicitly. Without it,
+        // typescript-eslint infers the root from every eslint.config.ts
+        // loaded in the process; in this monorepo that's both this file
+        // and packages/create-wrap/template's, which throws
+        // "multiple candidate TSConfigRootDirs" once an editor/IDE loads
+        // both configs in the same session.
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
 );
