@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Context } from "hono";
+import type { Context } from 'hono';
 import type {
   BaseRepository,
   EntityStatistics,
@@ -7,10 +7,11 @@ import type {
   RepositoryEntity,
   RepositoryUpdate,
   RepositoryWith,
-} from "./base.repository";
-import { ValidateDTO } from "./decorators";
-import type { PaginatedResponse, PaginationQuery } from "./types/pagination";
-import { logger } from "./logger";
+} from './base.repository';
+import { ValidateDTO } from './decorators';
+import type { PaginatedResponse, PaginationQuery } from './types/pagination';
+import { logger } from './logger';
+import { AppVariables } from './registry';
 
 /**
  * Options accepted by BaseService read methods, typed from the repository.
@@ -44,11 +45,14 @@ export abstract class BaseService<
    * @param _context - The Hono context, required for validation.
    */
   @ValidateDTO()
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async create(dto: TCreate, _context: Context): Promise<RepositoryEntity<Repo>> {
+  async create( 
+    dto: TCreate,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _context: Context<{ Variables: AppVariables }>,
+  ): Promise<RepositoryEntity<Repo>> {
     this.logger.debug(`Creating entity in ${this.constructor.name}`, {
       className: this.constructor.name,
-      method: "create",
+      method: 'create',
     });
     return this.repository.create(dto) as Promise<RepositoryEntity<Repo>>;
   }
@@ -79,18 +83,18 @@ export abstract class BaseService<
     id: string | number,
     dto: TUpdate,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _context: Context,
+    _context: Context<{ Variables: AppVariables }>,
   ): Promise<RepositoryEntity<Repo>[] | null> {
     this.logger.debug(`Updating entity ${id} in ${this.constructor.name}`, {
       className: this.constructor.name,
-      method: "update",
+      method: 'update',
       id,
     });
     const exists = await this.repository.exists(id);
     if (!exists) {
       this.logger.warn(`Entity ${id} not found for update`, {
         className: this.constructor.name,
-        method: "update",
+        method: 'update',
         id,
       });
       throw new Error(`Entity with id ${id} not found`);
@@ -103,14 +107,14 @@ export abstract class BaseService<
   async delete(id: string | number): Promise<boolean> {
     this.logger.debug(`Deleting entity ${id} in ${this.constructor.name}`, {
       className: this.constructor.name,
-      method: "delete",
+      method: 'delete',
       id,
     });
     const exists = await this.repository.exists(id);
     if (!exists) {
       this.logger.warn(`Entity ${id} not found for deletion`, {
         className: this.constructor.name,
-        method: "delete",
+        method: 'delete',
         id,
       });
       throw new Error(`Entity with id ${id} not found`);
@@ -158,7 +162,10 @@ export abstract class BaseService<
     field: K,
     value: RepositoryEntity<Repo>[K],
   ): Promise<RepositoryEntity<Repo> | null> {
-    return this.repository.findOneBy(field, value) as Promise<RepositoryEntity<Repo> | null>;
+    return this.repository.findOneBy(
+      field,
+      value,
+    ) as Promise<RepositoryEntity<Repo> | null>;
   }
 
   async findOne(

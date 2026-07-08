@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "reflect-metadata";
-import type { Context } from "hono";
+import { type Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { bodyGetter, ContextInstance } from "../types/base";
 import { DTO_CLASSES } from "./registries";
+import { AppVariables } from "../registry";
 
 // ===== ERROR CLASSES =====
 export class ValidationError extends Error {
@@ -32,12 +33,12 @@ export function ValidateDTO<T extends object, B extends bodyGetter>(
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
-      const c: Context | undefined = args.find(
+      const c: Context<{ Variables: AppVariables }> | undefined = args.find(
         (arg) =>
           arg &&
           typeof arg === "object" &&
           "req" in arg &&
-          typeof (arg as any).json === "function",
+          Object.keys(arg.req).includes(provider),
       );
 
       if (!c) {
