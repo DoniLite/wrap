@@ -33,12 +33,13 @@ export function ValidateDTO<T extends object, B extends bodyGetter>(
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
-      // Real Hono requests: detected by class. `Object.keys(c.req)` doesn't
-      // include method names like "json" (they live on HonoRequest's
-      // prototype, not as own properties), so `instanceof Context` is the
-      // stable check — but it doesn't match the plain-object test double
-      // from `@donilite/wrap/testing`'s `testContext()`, so that shape is
-      // still accepted via the duck-typed fallback below.
+      // Real Hono requests: detected by class. HonoRequest's json()/query()
+      // live on the prototype, not as own properties, so `instanceof
+      // Context` is the stable check — but it doesn't match the plain-object
+      // test double from `@donilite/wrap/testing`'s `testContext()`, so
+      // that shape is still accepted via the duck-typed fallback below
+      // (a callable check, not enumeration — works regardless of whether
+      // the mock defines its methods as enumerable own properties).
       const c: Context<{ Variables: AppVariables }> | undefined = args.find(
         (arg) =>
           arg instanceof Context ||
@@ -47,7 +48,7 @@ export function ValidateDTO<T extends object, B extends bodyGetter>(
             "req" in arg &&
             arg.req &&
             typeof arg.req === "object" &&
-            Object.keys(arg.req).includes(provider)),
+            typeof (arg.req as Record<string, unknown>)[provider] === "function"),
       );
 
       if (!c) {
