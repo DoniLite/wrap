@@ -22,7 +22,7 @@ import type {
   PgUpdateSetSource,
 } from "drizzle-orm/pg-core";
 import { getDatabase, type WrapDatabase } from "./database";
-import { currentTransaction } from "./transaction";
+import { currentTransaction, withTransaction } from "./transaction";
 import { emitEntityEvent } from "./events";
 import {
   entityCachePrefix,
@@ -551,6 +551,9 @@ export abstract class BaseRepository<
   ): Promise<SyncPage<InferEntity<Tb>>> {
     const updatedAtColumn = this.requireColumn("updatedAt");
     const cursorDate = typeof cursor === "string" ? new Date(cursor) : cursor;
+    if (Number.isNaN(cursorDate.getTime())) {
+      throw new Error(`findChangedSince: invalid cursor "${String(cursor)}"`);
+    }
     const limit = options?.limit ?? 200;
 
     const rows = (await this.db
@@ -580,57 +583,69 @@ export abstract class BaseRepository<
   async applyBatch(
     changes: Array<SyncChange<TCreate, TUpdate>>,
   ): Promise<SyncBatchResult> {
-    const applied: Array<string | number> = [];
-    const conflicts: SyncBatchResult["conflicts"] = [];
+    // Atomic: a thrown error partway through (e.g. a constraint violation
+    // on change N) rolls back every change already applied in this batch,
+    // rather than leaving the server in a partially-applied state.
+    // Conflicts don't throw, so they still land inside the same commit.
+    return withTransaction(async () => {
+      const applied: Array<string | number> = [];
+      const conflicts: SyncBatchResult["conflicts"] = [];
 
-    for (const change of changes) {
-      const clientUpdatedAt =
-        typeof change.updatedAt === "string"
-          ? new Date(change.updatedAt)
-          : change.updatedAt;
+      for (const change of changes) {
+        const clientUpdatedAt =
+          typeof change.updatedAt === "string"
+            ? new Date(change.updatedAt)
+            : change.updatedAt;
 
-      if (change.op === "create") {
-        const created = await this.create(change.data as TCreate);
-        applied.push((created as { id: string | number }).id);
-        continue;
-      }
+        if (Number.isNaN(clientUpdatedAt.getTime())) {
+          throw new Error(
+            `applyBatch: invalid updatedAt "${String(change.updatedAt)}" for change ${change.id ?? "(create)"}`,
+          );
+        }
 
-      if (change.id === undefined) {
-        throw new Error(`applyBatch: "${change.op}" requires an id`);
-      }
+        if (change.op === "create") {
+          const created = await this.create(change.data as TCreate);
+          applied.push((created as { id: string | number }).id);
+          continue;
+        }
 
-      const existing = (await this.findById(change.id, {
-        includeDeleted: true,
-      })) as { updatedAt: Date | null } | null;
+        if (change.id === undefined) {
+          throw new Error(`applyBatch: "${change.op}" requires an id`);
+        }
 
-      if (existing?.updatedAt && existing.updatedAt > clientUpdatedAt) {
-        conflicts.push({
-          id: change.id,
-          serverUpdatedAt: existing.updatedAt.toISOString(),
+        const existing = (await this.findById(change.id, {
+          includeDeleted: true,
+        })) as { updatedAt: Date | null } | null;
+
+        if (existing?.updatedAt && existing.updatedAt > clientUpdatedAt) {
+          conflicts.push({
+            id: change.id,
+            serverUpdatedAt: existing.updatedAt.toISOString(),
+          });
+          continue;
+        }
+
+        const setValues =
+          change.op === "delete"
+            ? { deletedAt: new Date() }
+            : (change.data as Record<string, unknown>);
+
+        await this.db
+          .update(this.table)
+          .set(setValues as PgUpdateSetSource<Tb>)
+          .where(eq(this.table.id, change.id));
+
+        emitEntityEvent({
+          type: change.op === "delete" ? "deleted" : "updated",
+          table: getTableName(this.table),
+          data: { id: change.id },
         });
-        continue;
+
+        applied.push(change.id);
       }
 
-      const setValues =
-        change.op === "delete"
-          ? { deletedAt: new Date() }
-          : (change.data as Record<string, unknown>);
-
-      await this.db
-        .update(this.table)
-        .set(setValues as PgUpdateSetSource<Tb>)
-        .where(eq(this.table.id, change.id));
-
-      emitEntityEvent({
-        type: change.op === "delete" ? "deleted" : "updated",
-        table: getTableName(this.table),
-        data: { id: change.id },
-      });
-
-      applied.push(change.id);
-    }
-
-    return { applied, conflicts };
+      return { applied, conflicts };
+    });
   }
 
   // ===== Internals =====
