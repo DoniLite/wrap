@@ -28,6 +28,9 @@ export * from "./base.repository";
 export * from "./base.service";
 export * from "./base.controller";
 
+// Composition root
+export * from "./wrap";
+
 // DTOs (zod-backed)
 export * from "./dto";
 
