@@ -17,6 +17,14 @@ function buildApp(auth: JwtCookieAuthController) {
     auth.requireRoles([UserRoles.ADMIN]),
     (c) => c.json({ ok: true }),
   );
+  // Exercises the generic guard() primitive directly (not the role-based
+  // requireRoles convenience) — an arbitrary predicate over the identity.
+  app.get(
+    "/private/matching",
+    auth.authMiddleware,
+    auth.guard((identity) => identity.userId === "allowed-user"),
+    (c) => c.json({ ok: true }),
+  );
   app.post("/logout", (c) => {
     auth.revoke(c);
     return c.json({ ok: true });
@@ -75,8 +83,32 @@ describe("JwtCookieAuthController", () => {
       headers: { Cookie: cookie },
     });
     expect(res.status).toBe(200);
+
+    const body = (await res.json()) as {
+      identity: { userId: string; role: string };
+    };
+    expect(body.identity.userId).toBe("u2");
+    expect(body.identity.role).toBe(UserRoles.USER);
+
     // authMiddleware re-signs and refreshes the cookie on every request.
     expect(res.headers.get("set-cookie")).toContain("session=");
+  });
+
+  it("guard() applies an arbitrary predicate over the identity, independent of roles", async () => {
+    const auth = new JwtCookieAuthController({ secret: SECRET });
+    const app = buildApp(auth);
+
+    const { token: otherToken } = await loginAs(auth, "other-user", UserRoles.ADMIN);
+    const forbidden = await app.request("/private/matching", {
+      headers: { Authorization: `Bearer ${otherToken}` },
+    });
+    expect(forbidden.status).toBe(403);
+
+    const { token: allowedToken } = await loginAs(auth, "allowed-user", UserRoles.USER);
+    const allowed = await app.request("/private/matching", {
+      headers: { Authorization: `Bearer ${allowedToken}` },
+    });
+    expect(allowed.status).toBe(200);
   });
 
   it("requireRoles blocks the wrong role and allows the right one", async () => {
@@ -119,8 +151,9 @@ describe("JwtCookieAuthController", () => {
     expect(() => new JwtCookieAuthController({ secret: "" })).toThrow();
   });
 
-  it("exposes a static OpenAPI security scheme", () => {
-    const schemes = JwtCookieAuthController.openApiSecurityScheme();
+  it("exposes an OpenAPI security scheme", () => {
+    const auth = new JwtCookieAuthController({ secret: SECRET });
+    const schemes = auth.openApiSecurityScheme();
     expect(Object.keys(schemes)).toEqual(["bearerAuth", "cookieAuth"]);
   });
 });
