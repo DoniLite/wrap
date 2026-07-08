@@ -5,8 +5,8 @@ import { cors } from 'hono/cors';
 import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
 import type { SwaggerUIOptions } from '@hono/swagger-ui';
-import { joinPath, mountController, RouterController, type RegisterOptions } from './base.controller';
-import { getControllerMetadata } from './decorators';
+import { mountController, RouterController, type RegisterOptions } from './base.controller';
+import { getControllerMetadata, joinPath, recordControllerMount } from './decorators';
 import { ResponseHelper } from './helpers/response.helper';
 import { errorHandler } from './middleware/error-handler.middleware';
 import { AuthController, isAuthController } from './middleware/auth/auth.controller';
@@ -112,6 +112,9 @@ export class Wrap {
     const instance = new ControllerClass();
     const metadata = getControllerMetadata(ControllerClass);
     const mountPath = joinPath(prefix ?? '', metadata?.basePath ?? '');
+    // No parent: registered directly on Wrap, i.e. this IS the root of its
+    // mount chain — see resolveControllerPath() in decorators/registries.ts.
+    recordControllerMount(ControllerClass, mountPath);
     mountController(this.app, mountPath, instance.getApp(), middlewares);
     return this;
   }

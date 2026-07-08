@@ -10,6 +10,8 @@ import {
   getCacheMetadata,
   getRateLimitMetadata,
   getSerializeMetadata,
+  joinPath,
+  recordControllerMount,
 } from './decorators';
 import { cacheMiddleware } from './middleware/cache.middleware';
 import { rateLimitMiddleware } from './middleware/rate-limit.middleware';
@@ -26,15 +28,6 @@ export interface RouteMiddlewares {
 export interface ControllerOptions {
   middlewares?: RouteMiddlewares;
   excludeRoutes?: string[];
-}
-
-/** Join path segments, collapsing slashes — `""`/`"/"` segments drop out. */
-export function joinPath(...segments: string[]): string {
-  const joined = segments
-    .map((segment) => segment.replace(/^\/|\/$/g, ''))
-    .filter(Boolean)
-    .join('/');
-  return joined ? `/${joined}` : '/';
 }
 
 export interface RegisterOptions {
@@ -274,6 +267,7 @@ export abstract class RouterController {
     const instance = new ControllerClass();
     const metadata = getControllerMetadata(ControllerClass);
     const mountPath = joinPath(prefix ?? '', metadata?.basePath ?? '');
+    recordControllerMount(ControllerClass, mountPath, this.constructor);
     mountController(this.app, mountPath, instance.getApp(), middlewares);
     return this;
   }

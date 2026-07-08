@@ -9,6 +9,7 @@ import {
   getMiddlewareMetadata,
   getRouteMetadata,
   getSwaggerMetadata,
+  resolveControllerPath,
 } from "../decorators";
 import { getAllDTOs } from "../decorators";
 import { WRAP_AUTH_MIDDLEWARE, type AuthController } from "../middleware/auth/auth.controller";
@@ -74,7 +75,13 @@ export class SwaggerGenerator {
       const controllerMetadata = getControllerMetadata(ControllerClass);
       if (!controllerMetadata) continue;
 
-      const { basePath, tags: controllerTags } = controllerMetadata;
+      // The controller's own @Controller basePath is only correct in
+      // isolation; once controllers compose each other via register(),
+      // the real mount path also depends on the prefix/parent chain that
+      // was resolved at runtime — fall back to the bare basePath only for
+      // a controller that was never actually registered anywhere.
+      const basePath = resolveControllerPath(ControllerClass) ?? controllerMetadata.basePath;
+      const { tags: controllerTags } = controllerMetadata;
 
       // Add controller tags
       if (controllerTags) {
