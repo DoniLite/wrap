@@ -85,6 +85,6 @@ jobs:
             PRERELEASE_FLAG=(--prerelease)
           fi
           gh release create "$GITHUB_REF_NAME" \
-            --title "@donilite/wrap & @donilite/create-wrap $VERSION" \
+            --title "$VERSION" \
             --generate-notes \
             "${PRERELEASE_FLAG[@]}"
