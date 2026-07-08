@@ -19,7 +19,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # also needed to create the GitHub Release
       id-token: write # npm Trusted Publishing (OIDC + provenance)
     steps:
       - uses: actions/checkout@v4
@@ -67,3 +67,24 @@ jobs:
       - name: Publish @donilite/create-wrap
         working-directory: packages/create-wrap
         run: npm publish
+
+      # Only runs once both packages actually published — a GitHub Release
+      # should never announce a version that didn't make it to npm. Notes
+      # are auto-generated from merged PRs/commits since the previous tag
+      # (gh's native --generate-notes); to group them into categories
+      # (Features/Fixes/...) instead of one flat list, add a
+      # .github/release.yml with a `changelog.categories` config — none
+      # exists yet, so this is a flat "What's changed" list for now.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PRERELEASE_FLAG=()
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE_FLAG=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "@donilite/wrap & @donilite/create-wrap $VERSION" \
+            --generate-notes \
+            "${PRERELEASE_FLAG[@]}"
