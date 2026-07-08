@@ -31,6 +31,15 @@ export interface RouteOptions {
   query?: Record<string, { type: string; description?: string }>;
   deprecated?: boolean;
   handler?: string;
+  /**
+   * OpenAPI tags for this specific route — when present, REPLACES (not
+   * merges with) the owning controller's `@Controller({ tags })` for this
+   * operation only. Lets a child controller's routes carry their own tag
+   * identity distinct from routes that should stay under the parent's tag.
+   * See the tag-nesting note in `swagger/index.ts`'s `generateSpec()` for
+   * why this is a flat-namespace lever, not real nesting.
+   */
+  tags?: string[];
 }
 
 export interface CacheOptions {

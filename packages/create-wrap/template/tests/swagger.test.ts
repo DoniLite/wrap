@@ -99,6 +99,26 @@ class NestedParentController extends RouterController {
 // way resolveControllerPath() has anything recorded to walk.
 new Wrap().register(NestedParentController);
 
+// Route-level tags: a route's own `tags` should REPLACE the controller's
+// tags for that operation only, not merge with them.
+@Controller({ basePath: '/tag-override', tags: ['Parent'] })
+class TagOverrideTestController extends RouterController {
+  constructor() {
+    super(webFactory.createApp());
+  }
+
+  @Get({ path: '/inherits' })
+  async inheritsControllerTag(c: Context) {
+    return c.json({ ok: true });
+  }
+
+  @Get({ path: '/overrides', tags: ['Parent: Child'] })
+  async overridesControllerTag(c: Context) {
+    return c.json({ ok: true });
+  }
+}
+void TagOverrideTestController;
+
 describe('SwaggerGenerator', () => {
   it('derives path parameters from :id routes instead of requiring route.params', () => {
     const generator = new SwaggerGenerator({ title: 'Test', version: '0.0.0' });
@@ -178,5 +198,39 @@ describe('SwaggerGenerator', () => {
     // The bug: using the child's bare basePath in isolation would have
     // produced this path instead — assert it's NOT what got generated.
     expect(spec.paths['/nested-child/{id}']).toBeUndefined();
+  });
+
+  it('merges config.tags descriptions into the generated top-level tags instead of discarding them', () => {
+    const generator = new SwaggerGenerator({
+      title: 'Test',
+      version: '0.0.0',
+      tags: [{ name: 'Secure', description: 'Endpoints requiring authentication' }],
+    });
+    const spec = generator.generateSpec();
+
+    const secureTag = spec.tags.find((t: { name: string }) => t.name === 'Secure');
+    expect(secureTag).toEqual({
+      name: 'Secure',
+      description: 'Endpoints requiring authentication',
+    });
+
+    // A controller-declared tag with no matching config entry still falls
+    // back to a bare { name }.
+    const nestedTag = spec.tags.find((t: { name: string }) => t.name === 'Nested');
+    expect(nestedTag).toEqual({ name: 'Nested' });
+  });
+
+  it("a route's own tags replace (not merge with) its controller's tags", () => {
+    const generator = new SwaggerGenerator({ title: 'Test', version: '0.0.0' });
+    const spec = generator.generateSpec();
+
+    const inherited = spec.paths['/tag-override/inherits']?.get;
+    expect(inherited.tags).toEqual(['Parent']);
+
+    const overridden = spec.paths['/tag-override/overrides']?.get;
+    expect(overridden.tags).toEqual(['Parent: Child']);
+
+    // The overriding tag must still surface in the top-level tags list.
+    expect(spec.tags.some((t: { name: string }) => t.name === 'Parent: Child')).toBe(true);
   });
 });
