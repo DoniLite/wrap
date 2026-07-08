@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // src/core/swagger/index.ts
-import { SwaggerUI } from "@hono/swagger-ui";
+import { SwaggerUI, type SwaggerUIOptions } from "@hono/swagger-ui";
 import type { Hono } from "hono";
 import { z } from "zod";
 import {
@@ -11,6 +11,7 @@ import {
   getSwaggerMetadata,
 } from "../decorators";
 import { getAllDTOs } from "../decorators";
+import { WRAP_AUTH_MIDDLEWARE, type AuthController } from "../middleware/auth/auth.controller";
 
 export interface SwaggerConfig {
   title: string;
@@ -20,12 +21,38 @@ export interface SwaggerConfig {
   tags?: Array<{ name: string; description?: string }>;
 }
 
+/** Security schemes used when no `AuthController` is registered on the generator. */
+const DEFAULT_SECURITY_SCHEMES: Record<string, any> = {
+  bearerAuth: {
+    type: "http",
+    scheme: "bearer",
+    bearerFormat: "JWT",
+  },
+  cookieAuth: {
+    type: "apiKey",
+    in: "cookie",
+    name: "session",
+  },
+};
+
+/** Path-param names in a Hono route path, honoring both `:name` and `:name{regex}`. */
+function extractPathParamNames(path: string): string[] {
+  return [...path.matchAll(/:([A-Za-z0-9_]+)(?:\{[^}]*\})?/g)].map((m) => m[1]);
+}
+
 export class SwaggerGenerator {
   private config: SwaggerConfig;
   private schemas: Record<string, any> = {};
+  private authController?: AuthController;
 
-  constructor(config: SwaggerConfig) {
+  /**
+   * @param auth An `AuthController` instance (e.g. the same one passed to
+   * `Wrap.with(auth)`, including a combined one from `AuthController.combine(...)`)
+   * — its `openApiSecurityScheme()` drives the generated security schemes.
+   */
+  constructor(config: SwaggerConfig, auth?: AuthController) {
     this.config = config;
+    this.authController = auth;
   }
 
   /**
@@ -37,6 +64,8 @@ export class SwaggerGenerator {
 
     const paths: Record<string, any> = {};
     const tags = new Set<string>();
+    const securitySchemes =
+      this.authController?.openApiSecurityScheme() ?? DEFAULT_SECURITY_SCHEMES;
 
     // Iterate through all registered controllers
     const controllers = getAllControllers();
@@ -81,16 +110,18 @@ export class SwaggerGenerator {
         // Add parameters (path, query)
         const parameters = [];
 
-        if (route.params) {
-          for (const [name, paramInfo] of Object.entries(route.params)) {
-            parameters.push({
-              name,
-              in: "path",
-              required: true,
-              schema: { type: paramInfo.type },
-              description: paramInfo.description,
-            });
-          }
+        // Path params are derived from the route path itself (`:id`, `:id{regex}`);
+        // an explicit `route.params` entry only overrides type/description.
+        const explicitParams = route.params || {};
+        for (const name of extractPathParamNames(route.path || "")) {
+          const paramInfo = explicitParams[name];
+          parameters.push({
+            name,
+            in: "path",
+            required: true,
+            schema: { type: paramInfo?.type || "string" },
+            description: paramInfo?.description,
+          });
         }
 
         if (route.query) {
@@ -233,18 +264,19 @@ export class SwaggerGenerator {
           };
         }
 
-        // Add security requirements for routes with auth middleware
+        // Add security requirements for routes guarded by an AuthController
+        // middleware (authMiddleware / requireRoles) — tagged at the source
+        // rather than sniffed by function name (see auth.controller.ts).
         const middlewares =
           getMiddlewareMetadata(ControllerClass.prototype, route.handler) || [];
         const hasAuthMiddleware = middlewares.some(
-          (mw: any) =>
-            mw?.name === "authMiddleware" ||
-            mw?.name === "jwt" ||
-            (typeof mw === "function" && mw.toString().includes("jwtPayload")),
+          (mw: any) => Boolean(mw?.[WRAP_AUTH_MIDDLEWARE]),
         );
 
         if (hasAuthMiddleware) {
-          operation.security = [{ bearerAuth: [] }, { cookieAuth: [] }];
+          operation.security = Object.keys(securitySchemes).map((name) => ({
+            [name]: [],
+          }));
 
           // Add 401 response if not present
           if (!operation.responses["401"]) {
@@ -283,18 +315,7 @@ export class SwaggerGenerator {
       paths,
       components: {
         schemas: this.schemas,
-        securitySchemes: {
-          bearerAuth: {
-            type: "http",
-            scheme: "bearer",
-            bearerFormat: "JWT",
-          },
-          cookieAuth: {
-            type: "apiKey",
-            in: "cookie",
-            name: "session",
-          },
-        },
+        securitySchemes,
       },
     };
   }
@@ -371,14 +392,18 @@ export class SwaggerGenerator {
     // Combine paths
     const fullPath = routePath ? `${basePath}/${routePath}` : basePath || "/";
 
-    // Convert Hono params (:id) to OpenAPI params ({id})
-    return fullPath.replace(/:([^/]+)/g, "{$1}");
+    // Convert Hono params (:id, :id{regex}) to OpenAPI params ({id})
+    return fullPath.replace(/:([A-Za-z0-9_]+)(?:\{[^}]*\})?/g, "{$1}");
   }
 
   /**
    * Setup Swagger UI routes on a Hono app
    */
-  setupSwaggerUI(app: Hono, swaggerPath: string = "/docs") {
+  setupSwaggerUI(
+    app: Hono<any, any, any>,
+    swaggerPath: string = "/docs",
+    uiOptions?: Partial<SwaggerUIOptions>,
+  ) {
     const spec = this.generateSpec();
 
     // Serve OpenAPI spec as JSON
@@ -391,6 +416,7 @@ export class SwaggerGenerator {
       return c.html(
         SwaggerUI({
           url: `${swaggerPath}/openapi.json`,
+          ...uiOptions,
         }),
       );
     });
@@ -403,10 +429,14 @@ export class SwaggerGenerator {
  * Helper function to setup Swagger on an app
  */
 export function setupSwagger(
-  app: Hono,
+  app: Hono<any, any, any>,
   config: SwaggerConfig,
   path: string = "/docs",
+  options?: {
+    auth?: AuthController;
+    ui?: Partial<SwaggerUIOptions>;
+  },
 ) {
-  const generator = new SwaggerGenerator(config);
-  return generator.setupSwaggerUI(app, path);
+  const generator = new SwaggerGenerator(config, options?.auth);
+  return generator.setupSwaggerUI(app, path, options?.ui);
 }

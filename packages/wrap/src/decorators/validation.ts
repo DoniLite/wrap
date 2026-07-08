@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "reflect-metadata";
-import type { Context } from "hono";
+import { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { bodyGetter, ContextInstance } from "../types/base";
 import { DTO_CLASSES } from "./registries";
+import { AppVariables } from "../registry";
 
 // ===== ERROR CLASSES =====
 export class ValidationError extends Error {
@@ -32,12 +33,22 @@ export function ValidateDTO<T extends object, B extends bodyGetter>(
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
-      const c: Context | undefined = args.find(
+      // Real Hono requests: detected by class. HonoRequest's json()/query()
+      // live on the prototype, not as own properties, so `instanceof
+      // Context` is the stable check — but it doesn't match the plain-object
+      // test double from `@donilite/wrap/testing`'s `testContext()`, so
+      // that shape is still accepted via the duck-typed fallback below
+      // (a callable check, not enumeration — works regardless of whether
+      // the mock defines its methods as enumerable own properties).
+      const c: Context<{ Variables: AppVariables }> | undefined = args.find(
         (arg) =>
-          arg &&
-          typeof arg === "object" &&
-          "req" in arg &&
-          typeof (arg as any).json === "function",
+          arg instanceof Context ||
+          (arg &&
+            typeof arg === "object" &&
+            "req" in arg &&
+            arg.req &&
+            typeof arg.req === "object" &&
+            typeof (arg.req as Record<string, unknown>)[provider] === "function"),
       );
 
       if (!c) {

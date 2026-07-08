@@ -1,6 +1,6 @@
-import type { Context, Next } from "hono";
-import type { AppRoles } from "../registry";
-import { MIDDLEWARE_METADATA } from "./constants";
+import type { Context, Next } from 'hono';
+import type { AppRoles, AppVariables } from '../registry';
+import { MIDDLEWARE_METADATA } from './constants';
 
 /** Generic role check — role sets are defined by the app. */
 export function canAccess(
@@ -22,14 +22,17 @@ export function canAccess(
 export function Can(allowedRoles: readonly AppRoles[]) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
-    const middleware = async (c: Context, next: Next) => {
-      const payload = c.get("jwtPayload") as { role?: AppRoles } | undefined;
-      if (!payload) {
-        return c.json({ error: "Unauthorized" }, 401);
+    const middleware = async (
+      c: Context<{ Variables: AppVariables }>,
+      next: Next,
+    ) => {
+      const identity = c.get('identity') as { role?: AppRoles } | undefined;
+      if (!identity) {
+        return c.json({ error: 'Unauthorized' }, 401);
       }
 
-      if (!canAccess(payload.role, allowedRoles)) {
-        return c.json({ error: "Access denied" }, 403);
+      if (!canAccess(identity.role, allowedRoles)) {
+        return c.json({ error: 'Access denied' }, 403);
       }
       return await next();
     };
