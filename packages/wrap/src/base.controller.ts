@@ -71,6 +71,7 @@ export abstract class RouterController {
   protected app: Hono<{ Variables: AppVariables }>;
   protected options: ControllerOptions;
   protected logger = logger;
+  private routesRegistered = false;
 
   constructor(
     app: Hono<{ Variables: AppVariables }>,
@@ -82,7 +83,19 @@ export abstract class RouterController {
       excludeRoutes: options.excludeRoutes || [],
     };
 
-    this.registerRoutes();
+    // NOT registered here — see getApp(). Hono's router is purely
+    // registration-order-dependent for overlapping patterns (no automatic
+    // static-over-param priority), and `super()` always runs before a
+    // subclass's own constructor body. Registering eagerly here would mean
+    // this controller's own routes (including any `:id`-style one) always
+    // land in Hono's router BEFORE any `this.register(Child)` call the
+    // subclass makes afterward — a parent's own `GET /:id` would then
+    // silently swallow every request meant for a child mounted at a
+    // static prefix (e.g. `/occupants` matches `:id` too). Deferring to
+    // the first `getApp()` call — which only ever happens once the whole
+    // constructor, including every `register()` call in the body, has
+    // finished — registers children first and this controller's own
+    // routes last, so more specific/static child paths correctly win.
   }
 
   // ... (methods) ...
@@ -102,9 +115,14 @@ export abstract class RouterController {
   protected registerCustomRoutes(): void {}
 
   /**
-   * Register all routes (standard CRUD and decorated)
+   * Register all routes (standard CRUD and decorated) exactly once, on
+   * first access. Called from `getApp()`, never from the constructor —
+   * see the comment there for why the timing matters.
    */
   private registerRoutes(): void {
+    if (this.routesRegistered) return;
+    this.routesRegistered = true;
+
     // Register decorated routes (this now includes standard CRUD methods as they are decorated)
     this.registerDecoratedRoutes();
 
@@ -247,6 +265,7 @@ export abstract class RouterController {
    * Get the Hono app instance
    */
   public getApp(): Hono<{ Variables: AppVariables }> {
+    this.registerRoutes();
     return this.app;
   }
 
