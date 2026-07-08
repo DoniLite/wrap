@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import "reflect-metadata";
-import { type Context } from "hono";
+import { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { bodyGetter, ContextInstance } from "../types/base";
 import { DTO_CLASSES } from "./registries";
@@ -33,12 +33,21 @@ export function ValidateDTO<T extends object, B extends bodyGetter>(
     const originalMethod = descriptor.value;
 
     descriptor.value = async function (...args: any[]) {
+      // Real Hono requests: detected by class. `Object.keys(c.req)` doesn't
+      // include method names like "json" (they live on HonoRequest's
+      // prototype, not as own properties), so `instanceof Context` is the
+      // stable check — but it doesn't match the plain-object test double
+      // from `@donilite/wrap/testing`'s `testContext()`, so that shape is
+      // still accepted via the duck-typed fallback below.
       const c: Context<{ Variables: AppVariables }> | undefined = args.find(
         (arg) =>
-          arg &&
-          typeof arg === "object" &&
-          "req" in arg &&
-          Object.keys(arg.req).includes(provider),
+          arg instanceof Context ||
+          (arg &&
+            typeof arg === "object" &&
+            "req" in arg &&
+            arg.req &&
+            typeof arg.req === "object" &&
+            Object.keys(arg.req).includes(provider)),
       );
 
       if (!c) {
