@@ -9,7 +9,7 @@ import { joinPath, mountController, RouterController, type RegisterOptions } fro
 import { getControllerMetadata } from './decorators';
 import { ResponseHelper } from './helpers/response.helper';
 import { errorHandler } from './middleware/error-handler.middleware';
-import { AuthController } from './middleware/auth/auth.controller';
+import { AuthController, isAuthController } from './middleware/auth/auth.controller';
 import { requestLoggerMiddleware } from './middleware/request-logger.middleware';
 import type { AppVariables } from './registry';
 import { SwaggerGenerator, type SwaggerConfig } from './swagger';
@@ -85,7 +85,7 @@ export class Wrap {
    * schemes.
    */
   with(pluginOrMiddleware: WrapMiddleware | AuthController): this {
-    if (pluginOrMiddleware instanceof AuthController) {
+    if (isAuthController(pluginOrMiddleware)) {
       this.auth = pluginOrMiddleware;
       return this;
     }

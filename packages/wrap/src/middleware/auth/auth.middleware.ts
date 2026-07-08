@@ -1,7 +1,7 @@
 import { JwtCookieAuthController } from "./jwt-cookie.controller";
 import type { Auth, AuthOptions } from "./types";
 
-export { AuthController, type AuthControllerClass } from "./auth.controller";
+export { AuthController } from "./auth.controller";
 export { JwtCookieAuthController } from "./jwt-cookie.controller";
 export type { Auth, AuthOptions } from "./types";
 export { JWTSessionBase, JWTSession } from "./types";

@@ -11,11 +11,7 @@ import {
   getSwaggerMetadata,
 } from "../decorators";
 import { getAllDTOs } from "../decorators";
-import {
-  WRAP_AUTH_MIDDLEWARE,
-  type AuthController,
-  type AuthControllerClass,
-} from "../middleware/auth/auth.controller";
+import { WRAP_AUTH_MIDDLEWARE, type AuthController } from "../middleware/auth/auth.controller";
 
 export interface SwaggerConfig {
   title: string;
@@ -47,19 +43,16 @@ function extractPathParamNames(path: string): string[] {
 export class SwaggerGenerator {
   private config: SwaggerConfig;
   private schemas: Record<string, any> = {};
-  private authController?: AuthControllerClass;
+  private authController?: AuthController;
 
   /**
    * @param auth An `AuthController` instance (e.g. the same one passed to
-   * `Wrap.with(auth)`) — its constructor's `openApiSecurityScheme()` drives
-   * the generated security schemes. Takes an instance, not the class, to
-   * match `.with()`'s ergonomics; the static hook is resolved internally.
+   * `Wrap.with(auth)`, including a combined one from `AuthController.combine(...)`)
+   * — its `openApiSecurityScheme()` drives the generated security schemes.
    */
   constructor(config: SwaggerConfig, auth?: AuthController) {
     this.config = config;
-    this.authController = auth
-      ? (auth.constructor as unknown as AuthControllerClass)
-      : undefined;
+    this.authController = auth;
   }
 
   /**

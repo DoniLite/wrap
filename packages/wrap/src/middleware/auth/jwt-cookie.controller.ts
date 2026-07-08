@@ -115,7 +115,7 @@ export class JwtCookieAuthController extends AuthController {
     this.revoke(c);
   }
 
-  static override openApiSecurityScheme(): Record<string, unknown> {
+  override openApiSecurityScheme(): Record<string, unknown> {
     return {
       bearerAuth: {
         type: "http",
