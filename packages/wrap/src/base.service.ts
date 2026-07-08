@@ -7,6 +7,9 @@ import type {
   RepositoryEntity,
   RepositoryUpdate,
   RepositoryWith,
+  SyncBatchResult,
+  SyncChange,
+  SyncPage,
 } from './base.repository';
 import { ValidateDTO } from './decorators';
 import type { PaginatedResponse, PaginationQuery } from './types/pagination';
@@ -23,6 +26,15 @@ export interface ServiceFindOptions<Repo> {
 }
 
 /**
+ * Base for any service, with no repository attached. Use this directly for
+ * features that aren't entity-CRUD-based (orchestration, sync, email, ...):
+ * `class NotificationService extends WrapService {}`
+ */
+export abstract class WrapService {
+  protected logger = logger;
+}
+
+/**
  * Generic CRUD service. Everything is derived from the repository type:
  * `class ExampleService extends BaseService<ExampleRepository> {}`
  *
@@ -34,10 +46,10 @@ export abstract class BaseService<
   Repo extends BaseRepository<any, any, any>,
   TCreate = RepositoryCreate<Repo>,
   TUpdate = RepositoryUpdate<Repo>,
-> {
-  protected logger = logger;
-
-  constructor(protected repository: Repo) {}
+> extends WrapService {
+  constructor(protected repository: Repo) {
+    super();
+  }
 
   /**
    * Creates a new entity.
@@ -181,6 +193,23 @@ export abstract class BaseService<
 
   async exists(id: string | number): Promise<boolean> {
     return this.repository.exists(id);
+  }
+
+  /** Pull rows changed since `cursor` — see `BaseRepository.findChangedSince`. */
+  async findChangedSince(
+    cursor: Date | string,
+    options?: { limit?: number },
+  ): Promise<SyncPage<RepositoryEntity<Repo>>> {
+    return this.repository.findChangedSince(cursor, options) as Promise<
+      SyncPage<RepositoryEntity<Repo>>
+    >;
+  }
+
+  /** Push a batch of offline-made changes — see `BaseRepository.applyBatch`. */
+  async applyBatch(
+    changes: Array<SyncChange<TCreate, TUpdate>>,
+  ): Promise<SyncBatchResult> {
+    return this.repository.applyBatch(changes);
   }
 
   /**

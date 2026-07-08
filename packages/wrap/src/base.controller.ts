@@ -4,6 +4,7 @@ import type { BaseService } from './base.service';
 import { logger } from './logger';
 import type { AppVariables } from './registry';
 import {
+  getControllerMetadata,
   getRouteMetadata,
   getMiddlewareMetadata,
   getCacheMetadata,
@@ -27,24 +28,61 @@ export interface ControllerOptions {
   excludeRoutes?: string[];
 }
 
+/** Join path segments, collapsing slashes — `""`/`"/"` segments drop out. */
+export function joinPath(...segments: string[]): string {
+  const joined = segments
+    .map((segment) => segment.replace(/^\/|\/$/g, ''))
+    .filter(Boolean)
+    .join('/');
+  return joined ? `/${joined}` : '/';
+}
+
+export interface RegisterOptions {
+  /** Prefixed in front of the child's own `@Controller({ basePath })`. */
+  prefix?: string;
+  /**
+   * Middleware scoped to this mount — applied on the PARENT app, before
+   * `.route()` attaches the child, so it wraps every request the child
+   * handles (including its bare mount path) regardless of when the
+   * child's own routes were registered. Not the same as putting
+   * middleware inside the child controller itself, which only guards
+   * that controller's own routes, not further children it composes.
+   */
+  middlewares?: MiddlewareHandler<{ Variables: AppVariables }>[];
+}
+
+/** Shared by `Wrap.register()` and `RouterController.register()`. */
+export function mountController(
+  app: Hono<{ Variables: AppVariables }>,
+  mountPath: string,
+  childApp: Hono<{ Variables: AppVariables }>,
+  middlewares?: MiddlewareHandler<{ Variables: AppVariables }>[],
+): void {
+  if (middlewares?.length) {
+    const scopedPath = mountPath === '/' ? '*' : `${mountPath}/*`;
+    for (const middleware of middlewares) {
+      app.use(scopedPath, middleware);
+    }
+  }
+  app.route(mountPath, childApp);
+}
+
 /**
- * Generic HTTP controller. Everything is derived from the service type:
- * `class ExampleController extends BaseController<ExampleService> {}`
+ * Route-scanning base for any Hono-mounted controller — decorated-route
+ * registration, middleware assembly and error handling, with no service
+ * or repository attached. Use this directly for controllers that aren't
+ * backed by an entity (health checks, aggregation/root routes, ...).
+ * `class IndexController extends RouterController {}`
  */
-export abstract class BaseController<
-  Service extends BaseService<any, any, any> = BaseService<any, any, any>,
-> {
-  protected service: Service;
+export abstract class RouterController {
   protected app: Hono<{ Variables: AppVariables }>;
   protected options: ControllerOptions;
   protected logger = logger;
 
   constructor(
-    service: Service,
     app: Hono<{ Variables: AppVariables }>,
     options: ControllerOptions = {},
   ) {
-    this.service = service;
     this.app = app;
     this.options = {
       middlewares: options.middlewares || {},
@@ -176,7 +214,7 @@ export abstract class BaseController<
               // If response is a Hono Response, extract and transform the JSON body
               if (response instanceof Response) {
                 const contentType = response.headers.get('content-type');
-                const status = response.status;
+                const { status } = response;
 
                 // Only serialize successful JSON responses (2xx status codes)
                 if (
@@ -217,5 +255,45 @@ export abstract class BaseController<
    */
   public getApp(): Hono<{ Variables: AppVariables }> {
     return this.app;
+  }
+
+  /**
+   * Mount a child controller at the path declared by its
+   * `@Controller({ basePath })` decorator (optionally prefixed) — the same
+   * composition primitive `Wrap.register()` uses at the top level, so any
+   * controller can compose child controllers under itself (parent → children).
+   */
+  public register<C extends RouterController>(
+    ControllerClass: new () => C,
+    options?: string | RegisterOptions,
+  ): this {
+    const { prefix, middlewares } =
+      typeof options === 'string'
+        ? { prefix: options, middlewares: undefined }
+        : (options ?? {});
+    const instance = new ControllerClass();
+    const metadata = getControllerMetadata(ControllerClass);
+    const mountPath = joinPath(prefix ?? '', metadata?.basePath ?? '');
+    mountController(this.app, mountPath, instance.getApp(), middlewares);
+    return this;
+  }
+}
+
+/**
+ * Generic CRUD controller. Everything is derived from the service type:
+ * `class ExampleController extends BaseController<ExampleService> {}`
+ */
+export abstract class BaseController<
+  Service extends BaseService<any, any, any> = BaseService<any, any, any>,
+> extends RouterController {
+  protected service: Service;
+
+  constructor(
+    service: Service,
+    app: Hono<{ Variables: AppVariables }>,
+    options: ControllerOptions = {},
+  ) {
+    super(app, options);
+    this.service = service;
   }
 }

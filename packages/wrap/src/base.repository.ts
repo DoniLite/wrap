@@ -6,6 +6,7 @@ import {
   eq,
   getTableColumns,
   getTableName,
+  gt,
   gte,
   ilike,
   inArray,
@@ -60,6 +61,28 @@ export interface EntityStatistics {
   monthly: StatisticsComparison;
   weekly: StatisticsComparison;
   yearly: StatisticsComparison;
+}
+
+/** A single offline-first change to apply via `BaseRepository.applyBatch`. */
+export interface SyncChange<TCreate, TUpdate> {
+  op: "create" | "update" | "delete";
+  /** Required for "update" and "delete"; ignored for "create". */
+  id?: string | number;
+  /** Row payload for "create"/"update"; ignored for "delete". */
+  data?: TCreate | TUpdate;
+  /** Client-side timestamp of this change, used for last-write-wins conflict resolution. */
+  updatedAt: string | Date;
+}
+
+export interface SyncBatchResult {
+  applied: Array<string | number>;
+  conflicts: Array<{ id: string | number; serverUpdatedAt: string }>;
+}
+
+export interface SyncPage<T> {
+  items: T[];
+  /** Pass back as `cursor` to fetch the next page; null once caught up. */
+  nextCursor: string | null;
 }
 
 /**
@@ -511,6 +534,103 @@ export abstract class BaseRepository<
   async exists(id: string | number): Promise<boolean> {
     const result = await this.findById(id);
     return result !== null;
+  }
+
+  // ===== Offline-first sync (pull by cursor / push a batch) =====
+
+  /**
+   * Pull rows changed since `cursor` (exclusive), ordered oldest-first.
+   * Soft-deleted rows are included as tombstones (their `deletedAt` bumps
+   * `updatedAt` automatically — see `BaseRow`) so a client can delete them
+   * locally. Not filtered by `softDeleteFilter`: sync needs tombstones,
+   * regular reads don't.
+   */
+  async findChangedSince(
+    cursor: Date | string,
+    options?: { limit?: number },
+  ): Promise<SyncPage<InferEntity<Tb>>> {
+    const updatedAtColumn = this.requireColumn("updatedAt");
+    const cursorDate = typeof cursor === "string" ? new Date(cursor) : cursor;
+    const limit = options?.limit ?? 200;
+
+    const rows = (await this.db
+      .select()
+      .from(this.table as PgTable)
+      .where(gt(updatedAtColumn, cursorDate))
+      .orderBy(asc(updatedAtColumn))
+      .limit(limit)) as InferEntity<Tb>[];
+
+    const last = rows.at(-1) as { updatedAt: Date | string | null } | undefined;
+    const nextCursor =
+      rows.length === limit && last?.updatedAt
+        ? new Date(last.updatedAt).toISOString()
+        : null;
+
+    return { items: rows, nextCursor };
+  }
+
+  /**
+   * Push a batch of offline-made changes. Conflict resolution is
+   * last-write-wins on `updatedAt`: if the server's row was touched more
+   * recently than the client's change, the change is reported back as a
+   * conflict and skipped rather than applied. Deletes are soft (set
+   * `deletedAt`) so they surface as tombstones through `findChangedSince`
+   * — this bypasses the repository's hard `delete()`.
+   */
+  async applyBatch(
+    changes: Array<SyncChange<TCreate, TUpdate>>,
+  ): Promise<SyncBatchResult> {
+    const applied: Array<string | number> = [];
+    const conflicts: SyncBatchResult["conflicts"] = [];
+
+    for (const change of changes) {
+      const clientUpdatedAt =
+        typeof change.updatedAt === "string"
+          ? new Date(change.updatedAt)
+          : change.updatedAt;
+
+      if (change.op === "create") {
+        const created = await this.create(change.data as TCreate);
+        applied.push((created as { id: string | number }).id);
+        continue;
+      }
+
+      if (change.id === undefined) {
+        throw new Error(`applyBatch: "${change.op}" requires an id`);
+      }
+
+      const existing = (await this.findById(change.id, {
+        includeDeleted: true,
+      })) as { updatedAt: Date | null } | null;
+
+      if (existing?.updatedAt && existing.updatedAt > clientUpdatedAt) {
+        conflicts.push({
+          id: change.id,
+          serverUpdatedAt: existing.updatedAt.toISOString(),
+        });
+        continue;
+      }
+
+      const setValues =
+        change.op === "delete"
+          ? { deletedAt: new Date() }
+          : (change.data as Record<string, unknown>);
+
+      await this.db
+        .update(this.table)
+        .set(setValues as PgUpdateSetSource<Tb>)
+        .where(eq(this.table.id, change.id));
+
+      emitEntityEvent({
+        type: change.op === "delete" ? "deleted" : "updated",
+        table: getTableName(this.table),
+        data: { id: change.id },
+      });
+
+      applied.push(change.id);
+    }
+
+    return { applied, conflicts };
   }
 
   // ===== Internals =====
