@@ -14,7 +14,7 @@ export const auth = new JwtCookieAuthController({
   secureCookies: appConfig.env === "production",
 });
 
-export const authMiddleware = auth;
+export const authMiddleware = auth.authMiddleware;
 export const setupCookieSession = auth.setupCookieSession.bind(auth);
 export const clearCookieSession = auth.clearCookieSession.bind(auth);
 
