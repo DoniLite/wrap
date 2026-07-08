@@ -12,7 +12,11 @@ import {
   resolveControllerPath,
 } from "../decorators";
 import { getAllDTOs } from "../decorators";
-import { WRAP_AUTH_MIDDLEWARE, type AuthController } from "../middleware/auth/auth.controller";
+import {
+  WRAP_AUTH_MIDDLEWARE,
+  type AuthController,
+  type OpenApiSecuritySchemes,
+} from "../middleware/auth/auth.controller";
 
 export interface SwaggerConfig {
   title: string;
@@ -23,7 +27,7 @@ export interface SwaggerConfig {
 }
 
 /** Security schemes used when no `AuthController` is registered on the generator. */
-const DEFAULT_SECURITY_SCHEMES: Record<string, any> = {
+const DEFAULT_SECURITY_SCHEMES: OpenApiSecuritySchemes = {
   bearerAuth: {
     type: "http",
     scheme: "bearer",
@@ -65,7 +69,7 @@ export class SwaggerGenerator {
 
     const paths: Record<string, any> = {};
     const tags = new Set<string>();
-    const securitySchemes =
+    const securitySchemes: OpenApiSecuritySchemes =
       this.authController?.openApiSecurityScheme() ?? DEFAULT_SECURITY_SCHEMES;
 
     // Iterate through all registered controllers
