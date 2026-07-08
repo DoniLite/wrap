@@ -53,8 +53,12 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "Releasing version $VERSION"
-          (cd packages/wrap && npm version "$VERSION" --no-git-tag-version)
-          (cd packages/create-wrap && npm version "$VERSION" --no-git-tag-version)
+          # `npm pkg set` writes the field unconditionally, unlike `npm version`
+          # (which errors with "Version not changed" if package.json was
+          # already bumped to this version in the tagged commit — a valid
+          # release flow, not just tag-first-then-let-CI-bump).
+          (cd packages/wrap && npm pkg set version="$VERSION")
+          (cd packages/create-wrap && npm pkg set version="$VERSION")
 
       - name: Publish @donilite/wrap
         working-directory: packages/wrap
