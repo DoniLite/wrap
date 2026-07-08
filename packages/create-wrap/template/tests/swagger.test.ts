@@ -7,6 +7,7 @@ import {
   RouterController,
   SwaggerGenerator,
   UseMiddleware,
+  Wrap,
 } from '@donilite/wrap';
 import type { Context } from 'hono';
 import * as schemas from '@/db';
@@ -55,6 +56,48 @@ class RegexParamTestController extends RouterController {
   }
 }
 void RegexParamTestController;
+
+// Regression coverage: a controller's real mount path depends on the
+// register() chain (prefix + parent), not just its own @Controller
+// basePath — a parent mounted at "/" (like IndexController) masks this
+// bug entirely, since joining with "/" contributes nothing. This parent
+// has a non-trivial basePath specifically so the bug would show up.
+@Controller({ basePath: '/nested-child', tags: ['Nested'] })
+class NestedChildController extends RouterController {
+  constructor() {
+    super(webFactory.createApp());
+  }
+
+  @Get({ path: '/:id' })
+  async byId(c: Context) {
+    return c.json({ ok: true });
+  }
+}
+
+@Controller({ basePath: '/secondary-nested-child', tags: ['Nested'] })
+class SecondaryNestedChildController extends RouterController {
+  constructor() {
+    super(webFactory.createApp());
+  }
+
+  @Get({ path: '/:id' })
+  async byId(c: Context) {
+    return c.json({ ok: true });
+  }
+}
+
+@Controller({ basePath: '/nested-parent', tags: ['Nested'] })
+class NestedParentController extends RouterController {
+  constructor() {
+    super(webFactory.createApp());
+    this.register(NestedChildController, '/scoped');
+    this.register(SecondaryNestedChildController);
+  }
+}
+// Registering the parent on a Wrap is what makes the whole chain
+// resolvable — it's how a real app composes controllers, and the only
+// way resolveControllerPath() has anything recorded to walk.
+new Wrap().register(NestedParentController);
 
 describe('SwaggerGenerator', () => {
   it('derives path parameters from :id routes instead of requiring route.params', () => {
@@ -117,5 +160,23 @@ describe('SwaggerGenerator', () => {
     // An unguarded route on the same generator must NOT get a security block.
     const unguarded = spec.paths['/api/examples/{id}']?.get;
     expect(unguarded.security).toBeUndefined();
+  });
+
+  it('resolves a child controller mounted with a prefix under a non-root parent to its real absolute path', () => {
+    const generator = new SwaggerGenerator({ title: 'Test', version: '0.0.0' });
+    const spec = generator.generateSpec();
+
+    // Real runtime path: "/nested-parent" (parent's own basePath) +
+    // "/scoped" (prefix given to register()) + "/nested-child" (child's
+    // own basePath) + "/:id" (the route itself).
+    const resolved = spec.paths['/nested-parent/scoped/nested-child/{id}'];
+    expect(resolved).toBeDefined();
+
+    const secondaryResolved = spec.paths['/nested-parent/secondary-nested-child/{id}'];
+    expect(secondaryResolved).toBeDefined();
+
+    // The bug: using the child's bare basePath in isolation would have
+    // produced this path instead — assert it's NOT what got generated.
+    expect(spec.paths['/nested-child/{id}']).toBeUndefined();
   });
 });
