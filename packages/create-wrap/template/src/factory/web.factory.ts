@@ -1,7 +1,10 @@
 import { createFactory } from "hono/factory";
 import type { JwtVariables } from "hono/jwt";
+import type { AppVariables } from "@donilite/wrap";
 import type { UserRoles } from "@/helpers/access.helper";
 
+/** Custom context variables this app contributes — the framework merges in
+ *  its own (e.g. `identity`, set by AuthController) automatically. */
 export type Variables = {
   // Add custom context variables here
 } & JwtVariables;
@@ -9,7 +12,7 @@ export type Variables = {
 /**
  * Register the app types into the framework:
  * - schema    → typed populate (`with`) and db.query keys
- * - variables → typed Hono context
+ * - variables → typed Hono context (the app's own contribution)
  * - roles     → typed access control (@Can, requireRoles)
  */
 declare module "@donilite/wrap" {
@@ -20,6 +23,9 @@ declare module "@donilite/wrap" {
   }
 }
 
+// Typed with the framework-merged `AppVariables` (Variables + identity, see
+// registry.ts), not the bare `Variables` above — every Hono app a
+// controller builds needs to agree with what AuthController/Wrap expect.
 export const webFactory = createFactory<{
-  Variables: Variables;
+  Variables: AppVariables;
 }>();
