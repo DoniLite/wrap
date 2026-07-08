@@ -1,6 +1,6 @@
 {
   "name": "@donilite/create-wrap",
-  "version": "0.1.0",
+  "version": "1.2.0",
   "description": "Scaffold a @donilite/wrap backend project (Hono + Drizzle + Bun, vertical-slice, decorator-driven)",
   "type": "module",
   "license": "MIT",
