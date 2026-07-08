@@ -4,8 +4,10 @@ import {
   requestJson,
   type TestDatabase,
 } from "@donilite/wrap/testing";
-import { JwtCookieAuthController, Wrap } from "@donilite/wrap";
+import { Controller, Get, JwtCookieAuthController, RouterController, Wrap } from "@donilite/wrap";
+import type { Context } from "hono";
 import * as schemas from "@/db";
+import { webFactory } from "@/factory/web.factory";
 import { IndexController } from "@/index.controller";
 
 let testDb: TestDatabase;
@@ -80,5 +82,64 @@ describe("Wrap composition root", () => {
 
     const child = await requestJson(guarded.raw, "GET", "/api/examples");
     expect(child.status).toBe(401);
+  });
+});
+
+@Controller({ basePath: "/occupants-like-child" })
+class OrderTestChildController extends RouterController {
+  constructor() {
+    super(webFactory.createApp());
+  }
+
+  @Get({ path: "/" })
+  async list(c: Context) {
+    return c.json({ matched: "child" });
+  }
+}
+
+@Controller({ basePath: "/parent-with-id" })
+class OrderTestParentController extends RouterController {
+  constructor() {
+    super(webFactory.createApp());
+    // Mirrors a real bug: a parent whose own route has a :param segment,
+    // composing a child at a static prefix. Hono's router is purely
+    // registration-order-dependent for overlapping patterns — if the
+    // parent's own :id route were registered before the child is mounted,
+    // it would swallow every request meant for the child (":id" matches
+    // the literal string "occupants-like-child" too).
+    this.register(OrderTestChildController);
+  }
+
+  @Get({ path: "/:id" })
+  async byId(c: Context) {
+    return c.json({ matched: "parent", id: c.req.param("id") });
+  }
+}
+
+describe("parent → children registration order", () => {
+  it("a child's static-prefix route is not swallowed by the parent's own :param route", async () => {
+    const app = new Wrap();
+    app.register(OrderTestParentController);
+
+    const childRes = await requestJson(
+      app.raw,
+      "GET",
+      "/parent-with-id/occupants-like-child",
+    );
+    expect(childRes.status).toBe(200);
+    expect(childRes.body).toEqual({ matched: "child" });
+  });
+
+  it("the parent's own :param route still matches a genuine id", async () => {
+    const app = new Wrap();
+    app.register(OrderTestParentController);
+
+    const parentRes = await requestJson(
+      app.raw,
+      "GET",
+      "/parent-with-id/some-real-id",
+    );
+    expect(parentRes.status).toBe(200);
+    expect(parentRes.body).toEqual({ matched: "parent", id: "some-real-id" });
   });
 });
