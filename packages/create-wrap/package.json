@@ -9,7 +9,8 @@
   },
   "files": [
     "src",
-    "template"
+    "template",
+    "profiles"
   ],
   "keywords": [
     "bun",
