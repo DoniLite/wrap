@@ -26,12 +26,12 @@ export function Can(allowedRoles: readonly AppRoles[]) {
       c: Context<{ Variables: AppVariables }>,
       next: Next,
     ) => {
-      const payload = c.get('jwtPayload') as { role?: AppRoles } | undefined;
-      if (!payload) {
+      const identity = c.get('identity') as { role?: AppRoles } | undefined;
+      if (!identity) {
         return c.json({ error: 'Unauthorized' }, 401);
       }
 
-      if (!canAccess(payload.role, allowedRoles)) {
+      if (!canAccess(identity.role, allowedRoles)) {
         return c.json({ error: 'Access denied' }, 403);
       }
       return await next();

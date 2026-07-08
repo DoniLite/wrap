@@ -13,6 +13,7 @@ import type { JwtVariables } from "hono/jwt";
  *     schema: typeof schemas;      // tables + relations → typed populate
  *     variables: Variables;        // Hono context variables
  *     roles: UserRoles;            // access-control roles
+ *     identity: MySessionShape;    // AuthController.authenticate()'s return shape
  *   }
  * }
  * ```
@@ -30,10 +31,23 @@ export type RegisteredSchema = WrapRegistry extends {
 /** Relational view of the registered schema — powers populate typing. */
 export type AppSchema = ExtractTablesWithRelations<RegisteredSchema>;
 
-/** Hono context variables registered by the app. */
+/**
+ * Shape of whatever `AuthController.authenticate()` resolves, exposed via
+ * `c.get("identity")`. Free-form by default — the framework doesn't assume
+ * RBAC or any particular session shape (no mandated `role`). Augment it
+ * like `schema`/`variables`/`roles` for full typing on `c.get("identity")`
+ * across the app; unaugmented, it's just `Record<string, unknown>`.
+ */
+export type AuthIdentity = WrapRegistry extends {
+  identity: infer I extends Record<string, unknown>;
+}
+  ? I
+  : Record<string, unknown>;
+
+/** Hono context variables registered by the app, `identity` always included. */
 export type AppVariables = WrapRegistry extends { variables: infer V extends object }
-  ? V
-  : JwtVariables;
+  ? V & { identity: AuthIdentity }
+  : JwtVariables & { identity: AuthIdentity };
 
 /** Access-control roles registered by the app. */
 export type AppRoles = WrapRegistry extends { roles: infer R extends string }
