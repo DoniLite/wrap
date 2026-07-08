@@ -65,7 +65,7 @@
         "zod": "^4.4.3",
       },
       "peerDependencies": {
-        "@electric-sql/pglite": "^0.3.0",
+        "@electric-sql/pglite": ">=0.3.0",
         "drizzle-kit": "^0.31.0",
         "drizzle-orm": "^0.45.0",
         "drizzle-zod": "^0.8.3",
