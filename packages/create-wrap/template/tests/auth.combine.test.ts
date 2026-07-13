@@ -1,6 +1,12 @@
 import { describe, it, expect } from "bun:test";
 import type { Context } from "hono";
-import { AuthController, JwtCookieAuthController, Wrap, type AuthIdentity } from "@donilite/wrap";
+import {
+  AuthController,
+  JwtCookieAuthController,
+  Wrap,
+  type AuthIdentity,
+  type OpenApiSecuritySchemes,
+} from "@donilite/wrap";
 import { UserRoles } from "@/helpers/access.helper";
 
 const SECRET = "combine-test";
@@ -29,7 +35,7 @@ class LegacyHeaderAuthController extends AuthController {
     this.revokeCalls += 1;
   }
 
-  override openApiSecurityScheme(): Record<string, unknown> {
+  override openApiSecurityScheme(): OpenApiSecuritySchemes {
     return { legacyToken: { type: "apiKey", in: "header", name: "X-Legacy-Token" } };
   }
 }

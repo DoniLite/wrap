@@ -41,6 +41,35 @@ type AuthEnv = { Variables: AppVariables };
 type AuthContext = Context<AuthEnv>;
 
 /**
+ * Strongly-typed OpenAPI 3.0.3 Security Scheme Object — the shapes an
+ * `AuthController.openApiSecurityScheme()` implementation is allowed to
+ * return, keyed by scheme name (matching `components.securitySchemes` in
+ * the generated spec). Modeled directly on the spec's four `type` variants
+ * (https://spec.openapis.org/oas/v3.0.3#security-scheme-object) instead of
+ * a loose `Record<string, unknown>` bag, so implementers get
+ * autocomplete/type-checking on exactly what each scheme type requires.
+ */
+export type OpenApiSecurityScheme =
+  | { type: "http"; scheme: string; bearerFormat?: string; description?: string }
+  | { type: "apiKey"; in: "header" | "query" | "cookie"; name: string; description?: string }
+  | { type: "oauth2"; flows: OpenApiOAuthFlows; description?: string }
+  | { type: "openIdConnect"; openIdConnectUrl: string; description?: string };
+
+export interface OpenApiOAuthFlow {
+  refreshUrl?: string;
+  scopes: Record<string, string>;
+}
+
+export interface OpenApiOAuthFlows {
+  implicit?: OpenApiOAuthFlow & { authorizationUrl: string };
+  password?: OpenApiOAuthFlow & { tokenUrl: string };
+  clientCredentials?: OpenApiOAuthFlow & { tokenUrl: string };
+  authorizationCode?: OpenApiOAuthFlow & { authorizationUrl: string; tokenUrl: string };
+}
+
+export type OpenApiSecuritySchemes = Record<string, OpenApiSecurityScheme>;
+
+/**
  * Paradigm-agnostic auth contract. Every request-authentication strategy
  * (JWT + cookie, DB-backed sessions, API keys, OAuth token introspection,
  * magic links, ...) implements the two abstract hooks below; the guard
@@ -112,14 +141,14 @@ export abstract class AuthController {
 
   /**
    * OpenAPI security scheme(s) this strategy contributes (Wrap.swagger()
-   * hook). Empty by default; concrete presets override. An instance method
-   * (not static) so a combined controller (`AuthController.combine(...)`)
-   * can report the merged schemes of whatever it wraps — a static method
-   * has no way to reach that per-instance data.
+   * hook). Mandatory — every paradigm has *some* way a client authenticates,
+   * and leaving this un-overridden silently produced an empty/misleading
+   * `securitySchemes` block in generated docs. An instance method (not
+   * static) so a combined controller (`AuthController.combine(...)`) can
+   * report the merged schemes of whatever it wraps — a static method has no
+   * way to reach that per-instance data.
    */
-  openApiSecurityScheme(): Record<string, unknown> {
-    return {};
-  }
+  abstract openApiSecurityScheme(): OpenApiSecuritySchemes;
 
   /**
    * Combine several `AuthController`s into one fallback chain: each is
@@ -166,7 +195,7 @@ class CombinedAuthController extends AuthController {
     }
   }
 
-  override openApiSecurityScheme(): Record<string, unknown> {
+  override openApiSecurityScheme(): OpenApiSecuritySchemes {
     return Object.assign(
       {},
       ...this.controllers.map((controller) => controller.openApiSecurityScheme()),

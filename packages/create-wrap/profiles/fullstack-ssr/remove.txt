@@ -1,0 +1,17 @@
+# Paths (relative to the scaffolded project root) deleted after the base
+# template is copied, before this profile's files/ overlay is applied.
+# Blank lines and lines starting with # are ignored.
+
+drizzle.config.ts
+compose.yml
+src/db
+src/features/example
+tests/cache.test.ts
+tests/example.controller.test.ts
+tests/example.repository.sync.test.ts
+tests/example.repository.test.ts
+tests/example.service.test.ts
+tests/realtime.test.ts
+tests/swagger.test.ts
+tests/transactions.test.ts
+tests/wrap.test.ts

@@ -12,7 +12,11 @@ import {
   resolveControllerPath,
 } from "../decorators";
 import { getAllDTOs } from "../decorators";
-import { WRAP_AUTH_MIDDLEWARE, type AuthController } from "../middleware/auth/auth.controller";
+import {
+  WRAP_AUTH_MIDDLEWARE,
+  type AuthController,
+  type OpenApiSecuritySchemes,
+} from "../middleware/auth/auth.controller";
 
 export interface SwaggerConfig {
   title: string;
@@ -23,7 +27,7 @@ export interface SwaggerConfig {
 }
 
 /** Security schemes used when no `AuthController` is registered on the generator. */
-const DEFAULT_SECURITY_SCHEMES: Record<string, any> = {
+const DEFAULT_SECURITY_SCHEMES: OpenApiSecuritySchemes = {
   bearerAuth: {
     type: "http",
     scheme: "bearer",
@@ -65,7 +69,7 @@ export class SwaggerGenerator {
 
     const paths: Record<string, any> = {};
     const tags = new Set<string>();
-    const securitySchemes =
+    const securitySchemes: OpenApiSecuritySchemes =
       this.authController?.openApiSecurityScheme() ?? DEFAULT_SECURITY_SCHEMES;
 
     // Iterate through all registered controllers
@@ -99,6 +103,12 @@ export class SwaggerGenerator {
           paths[fullPath] = {};
         }
 
+        // A route's own `tags` (when set) replace the controller's tags for
+        // this operation only — see the tag-nesting note below for why this
+        // exists and what it can/can't do.
+        const operationTags = route.tags && route.tags.length > 0 ? route.tags : controllerTags || [];
+        operationTags.forEach((tag) => tags.add(tag));
+
         // Build operation object
         const operation: any = {
           summary:
@@ -106,7 +116,7 @@ export class SwaggerGenerator {
             route.description ||
             `${method.toUpperCase()} ${fullPath}`,
           description: route.description,
-          tags: controllerTags || [],
+          tags: operationTags,
         };
 
         // Add deprecated flag
@@ -318,7 +328,30 @@ export class SwaggerGenerator {
       servers: this.config.servers || [
         { url: "http://localhost:3000", description: "Development server" },
       ],
-      tags: Array.from(tags).map((tag) => ({ name: tag })),
+      // Merge in `config.tags` (by name) so caller-supplied descriptions
+      // survive — a tag declared only on a controller/route (no matching
+      // config entry) falls back to a bare `{ name }`.
+      //
+      // On "nested" tags: OpenAPI/stock swagger-ui tags are a FLAT
+      // namespace — there is no parent/child relationship. An operation
+      // with `tags: ["parent", "enfant"]` legitimately appears under BOTH
+      // the "parent" AND "enfant" sections in swagger-ui; it does not
+      // render as "parent > enfant". ReDoc has a vendor extension,
+      // `x-tagGroups`, that *visually* nests tags in its sidebar — but
+      // that's ReDoc-only (confirmed against Redocly's own vendor-extension
+      // docs), not part of the OpenAPI spec, and not rendered by
+      // `@hono/swagger-ui` (stock swagger-ui-dist). So true hierarchical
+      // grouping isn't achievable here without swapping the UI renderer.
+      // The practical workaround with the flat model: give each level its
+      // own tag name using a naming convention, e.g. `"Parent"` and
+      // `"Parent: Child"` — visually adjacent (alphabetical sort) and
+      // unambiguous, without claiming nesting the spec doesn't have.
+      // `RouteOptions.tags` (see below) is the lever for that: it lets a
+      // route opt out of its controller's tag and declare its own.
+      tags: Array.from(tags).map((tag) => {
+        const configured = this.config.tags?.find((t) => t.name === tag);
+        return configured ?? { name: tag };
+      }),
       paths,
       components: {
         schemas: this.schemas,

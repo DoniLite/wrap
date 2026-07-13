@@ -5,7 +5,7 @@ import { sign, verify } from "hono/jwt";
 import { logger } from "../../logger";
 import { canAccess } from "../../decorators/access";
 import type { AppRoles, AppVariables, AuthIdentity } from "../../registry";
-import { AuthController } from "./auth.controller";
+import { AuthController, type OpenApiSecuritySchemes } from "./auth.controller";
 import type { AuthOptions } from "./types";
 import { JWTSessionBase } from "./types";
 
@@ -115,7 +115,7 @@ export class JwtCookieAuthController extends AuthController {
     this.revoke(c);
   }
 
-  override openApiSecurityScheme(): Record<string, unknown> {
+  override openApiSecurityScheme(): OpenApiSecuritySchemes {
     return {
       bearerAuth: {
         type: "http",
