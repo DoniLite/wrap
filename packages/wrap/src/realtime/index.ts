@@ -7,7 +7,7 @@
  * - fan-out through Bun.serve topics (ws.subscribe / server.publish)
  * - optional Redis pub/sub relay for multi-instance deployments
  * - `bindEntityEvents()` auto-publishes repository writes on
- *   `entity:<table>` channels — realtime "prêt à l'emploi et branchable"
+ *   `entity:<table>` channels — realtime
  *
  * ```ts
  * const realtime = createRealtime({ redisUrl: process.env.REDIS_URL });
@@ -23,13 +23,13 @@
  *   ← { "type": "subscribed", "channel": "..." }
  *   ← { "type": "message", "channel": "...", "data": ... }
  */
-import { createBunWebSocket } from "hono/bun";
-import type { ServerWebSocket, Server } from "bun";
+import type { Server } from "bun";
 import type { Context, MiddlewareHandler } from "hono";
 
 type BunServer = Server<any>;
 import { onEntityEvent, type EntityEvent } from "../events";
 import { logger } from "../logger";
+import { upgradeWebSocket, websocket } from "hono/bun";
 
 export interface RealtimeOptions {
   /** Redis connection string — enables the multi-instance relay. */
@@ -47,7 +47,7 @@ export interface Realtime {
   /** Hono handler upgrading the connection: `app.get("/realtime", realtime.upgrade)` */
   upgrade: MiddlewareHandler;
   /** WebSocket handlers for `Bun.serve({ websocket })` */
-  websocket: ReturnType<typeof createBunWebSocket>["websocket"];
+  websocket: typeof websocket;
   /** Give the realtime layer the Bun server (topic fan-out). */
   attach(server: BunServer): void;
   /** Publish a payload on a channel (local topics + Redis relay). */
@@ -63,9 +63,6 @@ type BunRedis = InstanceType<typeof Bun.RedisClient>;
 export function createRealtime(options: RealtimeOptions = {}): Realtime {
   const { redisUrl, topicPrefix = "wrap:rt", authorize } = options;
   const instanceId = crypto.randomUUID();
-
-  const { upgradeWebSocket, websocket } =
-    createBunWebSocket<ServerWebSocket>();
 
   let server: BunServer | undefined;
   let publisher: BunRedis | undefined;
