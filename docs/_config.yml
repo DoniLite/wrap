@@ -1,0 +1,54 @@
+title: "@donilite/wrap"
+description: >-
+  Bun-first, Hono + Drizzle OOP backend framework — API reference and handbook.
+baseurl: "/wrap" # repo-pages default; override in CI/CD if deployed at a custom domain/path
+url: ""
+
+# This config targets the "just-the-docs" theme (https://just-the-docs.com) —
+# a common choice for exactly this kind of API-reference site: automatic
+# left-nav from front matter (title/parent/nav_order/has_children), search,
+# no per-page nav wiring needed. Swap `remote_theme` for any other Jekyll
+# theme; every page's front matter (title/parent/nav_order/has_children) is
+# theme-agnostic front matter and most doc themes honor it directly, or fall
+# back to plain rendering harmlessly if a theme doesn't.
+remote_theme: just-the-docs/just-the-docs
+
+plugins:
+  - jekyll-remote-theme
+
+search_enabled: true
+heading_anchors: true
+
+nav_order_reference:
+  - index.md
+  - getting-started.md
+  - guide/index.md (parent: Guides)
+  - guide/architecture.md
+  - guide/auth.md
+  - guide/sync.md
+  - guide/swagger.md
+  - api/index.md (parent: API reference)
+  - api/wrap.md
+  - api/controllers.md
+  - api/services.md
+  - api/repositories.md
+  - api/auth.md
+  - api/decorators.md
+  - api/dto.md
+  - api/swagger.md
+  - api/registry.md
+  - api/realtime.md
+  - api/testing.md
+  - api/helpers.md
+  - cli/create-wrap.md
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+exclude:
+  - node_modules
+  - Gemfile
+  - Gemfile.lock
+  - vendor
