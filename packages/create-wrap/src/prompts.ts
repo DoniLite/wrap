@@ -24,7 +24,7 @@ function handleCancel<T>(value: T | symbol): T {
     clack.cancel("Cancelled.");
     process.exit(0);
   }
-  return value;
+  return value as T;
 }
 
 /** Free-text prompt with an optional default (used when the input is empty). */
@@ -44,6 +44,7 @@ export interface SelectOption<T extends string = string> {
   value: T;
   label: string;
   hint?: string;
+  disabled?: boolean;
 }
 
 /** Single select. */

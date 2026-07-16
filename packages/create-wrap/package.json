@@ -36,5 +36,8 @@
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1"
   }
 }
