@@ -1,6 +1,6 @@
 # CLAUDE.md — {{APP_NAME}}
 
-Scaffolded with `bunx @donilite/create-wrap` (**gateway** profile: HTTP reverse-proxy + best-effort WebSocket proxy, no database — this app fronts other services rather than owning data). Full framework API reference: **[link the docs site here once deployed]**. See `README.md` for the getting-started walkthrough — this file is LLM-oriented guidance on top of it.
+Scaffolded with `bunx @donilite/create-wrap@latest` (**gateway** profile: HTTP reverse-proxy + best-effort WebSocket proxy, no database — this app fronts other services rather than owning data). Full framework API reference: **[link the docs site here once deployed]**. See `README.md` for the getting-started walkthrough — this file is LLM-oriented guidance on top of it.
 
 ## HTTP proxying
 

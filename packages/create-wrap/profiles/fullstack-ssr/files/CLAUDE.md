@@ -1,6 +1,6 @@
 # CLAUDE.md — {{APP_NAME}}
 
-Scaffolded with `bunx @donilite/create-wrap` (**fullstack-ssr** profile: Hono backend + TanStack Router + React pages, server-rendered from the same app; no database by default). Full framework API reference: **[link the docs site here once deployed]**. See `README.md` for the getting-started walkthrough — this file is LLM-oriented guidance on top of it, read the "What this profile is — and isn't — set up for" section there before assuming anything works that isn't listed as shipped.
+Scaffolded with `bunx @donilite/create-wrap@latest` (**fullstack-ssr** profile: Hono backend + TanStack Router + React pages, server-rendered from the same app; no database by default). Full framework API reference: **[link the docs site here once deployed]**. See `README.md` for the getting-started walkthrough — this file is LLM-oriented guidance on top of it, read the "What this profile is — and isn't — set up for" section there before assuming anything works that isn't listed as shipped.
 
 ## The mechanism (there's no new `Wrap` primitive for SSR)
 

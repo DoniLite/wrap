@@ -46,7 +46,7 @@ Same pattern as the other profiles: extend `RouterController` (or `BaseControlle
 
 ## Growing into a database
 
-Look at the full-backend profile scaffolded by the same CLI (`bunx @donilite/create-wrap` → "Full backend"): copy its `src/bootstrap.ts` (adds `initializeDatabase()`), `drizzle.config.ts`, `compose.yml`, and `src/db/index.ts`.
+Look at the full-backend profile scaffolded by the same CLI (`bunx @donilite/create-wrap@latest` → "Full backend"): copy its `src/bootstrap.ts` (adds `initializeDatabase()`), `drizzle.config.ts`, `compose.yml`, and `src/db/index.ts`.
 
 ## Useful commands
 

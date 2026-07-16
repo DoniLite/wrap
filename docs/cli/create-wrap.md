@@ -8,7 +8,7 @@ nav_order: 5
 ## Usage
 
 ```sh
-bunx @donilite/create-wrap [project-name]
+bunx @donilite/create-wrap@latest [project-name]
 ```
 
 `project-name` can be given as a CLI argument or left out — omitted, the CLI prompts for it (`text("Project name")`). Fails immediately (before any prompts) if the target directory already exists.

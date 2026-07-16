@@ -1,6 +1,6 @@
 # CLAUDE.md — {{APP_NAME}}
 
-This project was scaffolded with `bunx @donilite/create-wrap` (**full-backend** profile: Postgres + Drizzle, Redis cache, realtime websockets, auth — everything). This file orients an LLM assistant working in *this* generated app. Full framework API reference (every class, every function, every parameter): **[link the docs site here once deployed]**.
+This project was scaffolded with `bunx @donilite/create-wrap@latest` (**full-backend** profile: Postgres + Drizzle, Redis cache, realtime websockets, auth — everything). This file orients an LLM assistant working in *this* generated app. Full framework API reference (every class, every function, every parameter): **[link the docs site here once deployed]**.
 
 ## Stack
 

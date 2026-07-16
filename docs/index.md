@@ -8,7 +8,7 @@ Bun-first backend framework on [Hono](https://hono.dev) + [Drizzle](https://orm.
 Two packages, released together:
 
 - **`@donilite/wrap`** — the framework.
-- **`@donilite/create-wrap`** — `bunx @donilite/create-wrap` scaffolds a new project, interactively, across five profiles (full backend, lightweight API, API aggregator, fullstack SSR, proxy/gateway).
+- **`@donilite/create-wrap`** — `bunx @donilite/create-wrap@latest` scaffolds a new project, interactively, across five profiles (full backend, lightweight API, API aggregator, fullstack SSR, proxy/gateway).
 
 ## Where to start
 

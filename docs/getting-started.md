@@ -10,12 +10,12 @@ nav_order: 2
 ## Scaffold a project
 
 ```bash
-bunx @donilite/create-wrap
+bunx @donilite/create-wrap@latest
 ```
 
 Prompts, in order:
 
-1. **Project name** (or pass it as the first CLI argument: `bunx @donilite/create-wrap my-app`).
+1. **Project name** (or pass it as the first CLI argument: `bunx @donilite/create-wrap@latest my-app`).
 2. **What kind of project is this?** — one of five profiles:
 
    | Profile | What you get |

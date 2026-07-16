@@ -3,7 +3,7 @@
 OOP backend framework on Hono + Drizzle — Bun-first, vertical-slice, decorator-driven. See the [repository README](https://github.com/DoniLite/wrap#readme) for the overview; this page is the module reference. Every exported class, function and option also carries JSDoc.
 
 ```bash
-bun create @donilite/wrap my-app   # scaffold a ready-to-run project
+bun create @donilite/wrap@latest my-app   # scaffold a ready-to-run project
 # or add to an existing app:
 bun add @donilite/wrap
 ```

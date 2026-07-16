@@ -43,7 +43,7 @@ Add more upstreams as more entries in `appConfig.externalApi` (or a map, if you 
 
 ## Growing into a database
 
-If this project later needs to persist data of its own (not just aggregate), look at the full-backend profile scaffolded by the same CLI (`bunx @donilite/create-wrap` → "Full backend"): copy its `src/bootstrap.ts` (adds `initializeDatabase()`), `drizzle.config.ts`, `compose.yml`, and `src/db/index.ts`, then switch a feature's `WrapService`/`RouterController` to `BaseService<Repo>`/`BaseController<Service>`.
+If this project later needs to persist data of its own (not just aggregate), look at the full-backend profile scaffolded by the same CLI (`bunx @donilite/create-wrap@latest` → "Full backend"): copy its `src/bootstrap.ts` (adds `initializeDatabase()`), `drizzle.config.ts`, `compose.yml`, and `src/db/index.ts`, then switch a feature's `WrapService`/`RouterController` to `BaseService<Repo>`/`BaseController<Service>`.
 
 ## Useful commands
 

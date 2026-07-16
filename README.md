@@ -37,7 +37,7 @@ export class UserController extends BaseController<UserService> { /* @Get, @Post
 ## Quick start
 
 ```bash
-bun create @donilite/wrap my-app
+bun create @donilite/wrap@latest my-app
 cd my-app
 bun run wake:db     # PostgreSQL + Redis (docker compose)
 bun run push:db     # apply the schema
@@ -66,7 +66,7 @@ bun test            # the app is born test-driven
 | Package | Description |
 | --- | --- |
 | [`@donilite/wrap`](packages/wrap) | the framework |
-| [`@donilite/create-wrap`](packages/create-wrap) | project scaffolding (`bun create @donilite/wrap`) |
+| [`@donilite/create-wrap`](packages/create-wrap) | project scaffolding (`bun create @donilite/wrap@latest`) |
 
 ## Development (this monorepo)
 

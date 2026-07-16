@@ -1,6 +1,6 @@
 # Profiles
 
-`bunx @donilite/create-wrap` asks what kind of project to scaffold (see
+`bunx @donilite/create-wrap@latest` asks what kind of project to scaffold (see
 `src/profiles.ts`). Every profile is generated from the SAME base —
 `packages/create-wrap/template/` — which is itself the "full-backend"
 profile's file tree (Postgres + Drizzle, Redis cache, realtime, auth,

@@ -1,6 +1,6 @@
 # CLAUDE.md — {{APP_NAME}}
 
-Scaffolded with `bunx @donilite/create-wrap` (**lightweight-api** profile: no database, no cache, no realtime — routes + auth + OpenAPI docs). Full framework API reference: **[link the docs site here once deployed]**. See `README.md` in this project for the getting-started walkthrough — this file is LLM-oriented guidance on top of it.
+Scaffolded with `bunx @donilite/create-wrap@latest` (**lightweight-api** profile: no database, no cache, no realtime — routes + auth + OpenAPI docs). Full framework API reference: **[link the docs site here once deployed]**. See `README.md` in this project for the getting-started walkthrough — this file is LLM-oriented guidance on top of it.
 
 ## What's different from the full-backend profile
 

@@ -3,9 +3,9 @@
 Scaffold a [@donilite/wrap](https://github.com/DoniLite/wrap#readme) backend project — Hono + Drizzle + Bun, vertical-slice, decorator-driven, test-driven.
 
 ```bash
-bun create @donilite/wrap my-app
+bun create @donilite/wrap@latest my-app
 # or
-bunx @donilite/create-wrap my-app
+bunx @donilite/create-wrap@latest my-app
 ```
 
 The generated project ships with:

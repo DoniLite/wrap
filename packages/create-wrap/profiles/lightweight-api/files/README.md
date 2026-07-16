@@ -45,7 +45,7 @@ Guard a route with `auth.authMiddleware` (see `@UseMiddleware([auth.authMiddlewa
 
 ## Growing into a database
 
-If this project later needs Postgres, look at the full-backend profile scaffolded by the same CLI (`bunx @donilite/create-wrap` → "Full backend"): copy its `src/bootstrap.ts` (adds `initializeDatabase()`), `drizzle.config.ts`, `compose.yml`, and `src/db/index.ts`, then switch a feature's `WrapService`/`RouterController` to `BaseService<Repo>`/`BaseController<Service>`.
+If this project later needs Postgres, look at the full-backend profile scaffolded by the same CLI (`bunx @donilite/create-wrap@latest` → "Full backend"): copy its `src/bootstrap.ts` (adds `initializeDatabase()`), `drizzle.config.ts`, `compose.yml`, and `src/db/index.ts`, then switch a feature's `WrapService`/`RouterController` to `BaseService<Repo>`/`BaseController<Service>`.
 
 ## Useful commands
 

@@ -1,6 +1,6 @@
 # CLAUDE.md — {{APP_NAME}}
 
-Scaffolded with `bunx @donilite/create-wrap` (**api-aggregator** profile: no database, service-oriented — `WrapService`s that call out to upstream APIs, fronted by `RouterController`s, mainly to get typed routes + OpenAPI docs over data this app doesn't own). Full framework API reference: **[link the docs site here once deployed]**. See `README.md` for the getting-started walkthrough — this file is LLM-oriented guidance on top of it.
+Scaffolded with `bunx @donilite/create-wrap@latest` (**api-aggregator** profile: no database, service-oriented — `WrapService`s that call out to upstream APIs, fronted by `RouterController`s, mainly to get typed routes + OpenAPI docs over data this app doesn't own). Full framework API reference: **[link the docs site here once deployed]**. See `README.md` for the getting-started walkthrough — this file is LLM-oriented guidance on top of it.
 
 ## What's different from the full-backend profile
 

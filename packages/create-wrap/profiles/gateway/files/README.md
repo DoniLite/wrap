@@ -39,7 +39,7 @@ tests/                     # bun:test suites (no live network calls)
 
 ## Growing into a database
 
-If this project later needs to persist data of its own, look at the full-backend profile scaffolded by the same CLI (`bunx @donilite/create-wrap` → "Full backend"): copy its `src/bootstrap.ts` (adds `initializeDatabase()`), `drizzle.config.ts`, `compose.yml`, and `src/db/index.ts`.
+If this project later needs to persist data of its own, look at the full-backend profile scaffolded by the same CLI (`bunx @donilite/create-wrap@latest` → "Full backend"): copy its `src/bootstrap.ts` (adds `initializeDatabase()`), `drizzle.config.ts`, `compose.yml`, and `src/db/index.ts`.
 
 ## Useful commands
 
